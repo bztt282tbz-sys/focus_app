@@ -58,7 +58,11 @@ csp = {
     'script-src': '\'self\'',
     'style-src': [
         '\'self\'',
-        'https://cdn.jsdelivr.net' # If using Bootstrap CDN
+        'https://cdn.jsdelivr.net' 
+    ],
+    'style-src': [
+        '\'self\'',
+        'https://cdn.jsdelivr.net' 
     ]
 }
 Talisman(app, force_https=True, content_security_policy=csp)
@@ -73,6 +77,9 @@ limiter = Limiter(
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=True)
+    is_onboarded = db.Column(db.Boolean, default=False)
+    security_preference = db.Column(db.String(20), default="Normal")
+    credential_id = db.Column(db.LargeBinary, nullable=True)
     temp_username = db.Column(db.String(50), nullable=True)
     credential_id = db.Column(db.LargeBinary, nullable=True)
     public_key = db.Column(db.LargeBinary, nullable=True)
@@ -101,11 +108,47 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def onboarding_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if current_user.is_authenticated and not current_user.is_onboarded:
+            return redirect(url_for('onboarding'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 # --- ROUTES ---
 
 @app.route('/')
 def index():
     return render_template('home.html', title="Home")
+
+@app.route('/onboarding', methods=['GET', 'POST'])
+@login_required
+def onboarding():
+    if current_user.is_onboarded:
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username')
+        security = request.form.get('security_preference')
+        
+        if not username or len(username) < 3:
+            flash("Please enter a valid username (min 3 chars).", "danger")
+            return render_template('onboarding.html')
+            
+        if User.query.filter_by(username=username).first():
+            flash("Username already taken.", "danger")
+            return render_template('onboarding.html')
+
+        current_user.username = username
+        current_user.security_preference = security
+        current_user.is_onboarded = True
+        db.session.commit()
+        
+        flash("Profile completed!", "success")
+        return redirect(url_for('dashboard'))
+        
+    return render_template('onboarding.html')
 
 @app.route('/admin')
 @login_required
@@ -119,6 +162,7 @@ def admin_dashboard():
 @app.route('/admin/toggle_user/<int:user_id>')
 @login_required
 @admin_required
+@onboarding_required
 def toggle_user(user_id):
     user = User.query.get_or_404(user_id)
     if user.id == current_user.id:
@@ -224,6 +268,28 @@ def verify_auth():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
+@app.route('/admin/toggle_setting/<string:setting_key>')
+@login_required
+@admin_required
+def toggle_setting(setting_key):
+    # Security check: only allow specific keys to be modified
+    if setting_key not in ['registration_enabled', 'login_enabled']:
+        abort(400)
+
+    setting = SystemSetting.query.filter_by(key=setting_key).first()
+    
+    if not setting:
+        # Create it if it doesn't exist for some reason
+        setting = SystemSetting(key=setting_key, value=False)
+        db.session.add(setting)
+    else:
+        setting.value = not setting.value
+    
+    db.session.commit()
+    status = "enabled" if setting.value else "disabled"
+    flash(f"System setting '{setting_key}' has been {status}.", "success")
+    return redirect(url_for('admin_dashboard'))
+
 @app.route('/login', methods=['GET'])
 @limiter.limit("5 per hour")
 def login():
@@ -232,6 +298,7 @@ def login():
 @app.route('/dashboard')
 @limiter.limit("5 per second")
 @login_required
+@onboarding_required
 def dashboard():
     return render_template('dashboard.html')
 
