@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+    <h1>Hello, {{ current_user.username }}!</h1>
+    <p>You are viewing a session-protected page.</p>
+    <p>Your data is currently hashed with Argon2id.</p>
+    {# Any JS logic previously here must be moved to static/js/auth.js #}
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+{% endblock %}

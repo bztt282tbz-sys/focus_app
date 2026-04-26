@@ -1,0 +1,9 @@
+flask
+python-dotenv
+gunicorn
+flask_talisman
+flask_limiter
+flask-sqlalchemy
+flask-login
+webauthn
+

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Create Secure Account</h2>
+<div id="status-feedback"></div>
+<div id="debug-info" style="background: #fff3cd; border: 1px solid #ffeeba; padding: 10px; margin-bottom: 15px; border-radius: 4px; display: none;">
+    <strong>Registration Debug:</strong> <span id="debug-text">Ready...</span>
+</div>
+
+<button id="reg-btn">Register Device (Biometrics)</button>
+
+<script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+{% endblock %}

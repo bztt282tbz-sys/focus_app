@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+    <h2>Login with Passkey</h2>
+    <div id="debug-info" style="display: none;">
+        <span id="debug-text"></span>
+    </div>
+    <button id="auth-btn" class="btn">Authenticate</button>
+
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+{% endblock %}
