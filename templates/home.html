@@ -1,14 +1,26 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="security-features">
-    <h2>Privacy by Design & Security Features</h2>
-    <p>This application is built with a focus on data integrity and user privacy.</p>
-    
-    
-
-    <div class="legal-info">
-        <p>Project licensed under the <strong>MIT License</strong>.</p>
+<div class="my-4">
+        <h3>What you can do:</h3>
+        <ul style="list-style: none; padding: 0;">
+            <li><strong>🔒 Go Passwordless:</strong> Register and login using secure device biometrics.</li>
+            <li><strong>🛡️ Privacy by Design:</strong> Your session is protected by industry-standard security headers.</li>
+            <li><strong>⚡ Coming Soon:</strong> End-to-end encrypted task tracking and productivity analytics.</li>
+        </ul>
     </div>
-</section>
+
+    <div class="cool-tech-badge" style="background: #eef2ff; padding: 1rem; border-radius: 12px; margin: 2rem 0;">
+        <h4 style="color: #4f46e5;">🚀 Pro-Level Tech Detected</h4>
+        <p>This app already supports <strong>WebAuthn PRF</strong>. We derive a unique encryption key locally on your device every time you log in, ensuring your future tasks remain your eyes only.</p>
+    </div>
+
+    <div class="links mt-4">
+        <a href="[https://github.com/bztt282tbz-sys/focus_app](https://github.com/bztt282tbz-sys/focus_app)" class="btn" target="_blank">View on GitHub</a>
+    </div>
+</div>
+
+<div class="legal-info mt-5 text-center text-muted" style="font-size: 0.8rem;">
+    <p>Project licensed under the <strong>MIT License</strong>.</p>
+</div>
 {% endblock %}
 
