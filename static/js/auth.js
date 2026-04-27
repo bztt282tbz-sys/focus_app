@@ -84,16 +84,29 @@ async function authenticateDevice() {
 
         const data = await resp.json();
         const options = JSON.parse(data.options);
-        const PRF_SALT = data.salt;
-        
-
+        const allSalts = data.salts; // This is an object of {credentialId: salt}
 
         options.challenge = bufferDecode(options.challenge);
+        
         if(options.allowCredentials) {
             options.allowCredentials.forEach(c => c.id = bufferDecode(c.id));
         }
 
-        options.extensions = { prf: { eval: { first: PRF_SALT } } };
+        // IMPORTANT: The PRF extension must match the expected API structure
+        // Since we don't know which credential the user will pick yet, 
+        // we often provide a generic salt or map it. 
+        // For a single-user-per-device flow:
+        const firstCredId = data.options.allowCredentials?.[0]?.id;
+        const specificSalt = allSalts[firstCredId] || Object.values(allSalts)[0];
+
+        options.extensions = {
+            prf: {
+                eval: {
+                    first: bufferDecode(specificSalt) // Must be 32 bytes
+                }
+            }
+        };
+
         const assertion = await navigator.credentials.get({ publicKey: options });
         
         const extensions = assertion.getClientExtensionResults();
@@ -123,8 +136,9 @@ async function authenticateDevice() {
             window.location.href = result.redirect;
         } else {
             throw new Error(result.error || "Verification failed");
-        }
+        } 
     } catch (err) {
+        console.error("Login Error:", err);
         logDebug(err.message, true);
         authBtn.disabled = false;
     }

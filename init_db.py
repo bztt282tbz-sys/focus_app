@@ -1,15 +1,15 @@
-from app import app, db, SystemSetting
+from app import app, db, SystemSettingBool
 
 with app.app_context():
     db.create_all()
     settings = [
-        ('registration_enabled', True),
-        ('login_enabled', True),
-        ('api_enabled', False)
+        ('Registration','registration_enabled', True, True),
+        ('Login','login_enabled', True, True),
+        ('API','api_enabled', False, True)
     ]
-    for key, value in settings:
-        if not SystemSetting.query.filter_by(key=key).first():
-            db.session.add(SystemSetting(key=key, value=value))
+    for label, key, value, expected_value in settings:
+        if not SystemSettingBool.query.filter_by(label=label).first():
+            db.session.add(SystemSettingBool(label=label,key=key, value=value,expected_value=expected_value))
     db.session.commit()
     print("Database initialized and default settings applied.")
 

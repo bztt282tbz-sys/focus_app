@@ -1,31 +1,43 @@
 {% extends "base.html" %}
 {% block content %}
-    <code id="e2e-key-display">Loading...</code>
-    <div class="card mb-4 mt-3">
-        <div class="card-header">System Controls</div>
-        <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <span>Registration: <strong>{{ 'Enabled' if reg_enabled else 'Disabled' }}</strong></span>
-                <a href="{{ url_for('toggle_setting', setting_key='registration_enabled') }}" 
-                   class="btn btn-sm {{ 'btn-warning' if reg_enabled else 'btn-success' }}">
-                {{ 'Disable' if reg_enabled else 'Enable' }}
-                </a>
-            </div>
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <span>Global Login: <strong>{{ 'Enabled' if login_enabled else 'Disabled' }}</strong></span>
-                <a href="{{ url_for('toggle_setting', setting_key='login_enabled') }}" 
-                   class="btn btn-sm {{ 'btn-warning' if login_enabled else 'btn-success' }}">
-                {{ 'Disable' if login_enabled else 'Enable' }}
-                </a>
+<div class="centered-content">
+    <h2 class="cover-heading mb-5">System Administration</h2>
+    
+    <div class="content-body text-start">
+        <div class="feature-item mb-2">
+            <h5 class="text-white mb-2">Interface Legend</h5>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-light">Optimal State: <strong class="text-success">Enabled</strong></span>
+                <button type="button" class="btn btn-sm btn-outline-info admin-panel-btn" disabled>Status</button>
             </div>
             <div class="d-flex justify-content-between align-items-center">
-                <span>API Aktiv: <span class="badge text-bg-warning">INOP</span><strong>{{ 'Enabled' if api_enabled else 'Disabled' }}</strong></span>
-                <a href="{{ url_for('toggle_setting', setting_key='api_enabled') }}" 
-                   class="btn btn-sm {{ 'btn-warning' if api_enabled else 'btn-success' }}">
-                {{ 'Disable' if api_enabled else 'Enable' }}
+                <span class="text-light">Attention Required: <strong class="text-warning">Enabled</strong></span>
+                <button type="button" class="btn btn-sm btn-outline-info admin-panel-btn" disabled>Status</button>
+            </div>
+        </div>
+
+        <hr class="my-4 border-light opacity-25">
+
+        {% for setting in settings %}
+        <div class="feature-item mb-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="text-white mb-1">{{ setting.label }}</h5>
+                    <p class="small {{ 'text-success' if setting.value == setting.expected_value else 'text-warning' }} fw-bold mb-0">
+                        Status: {{ 'Enabled' if setting.value else 'Disabled' }}
+                    </p>
+                </div>
+                <a href="{{ url_for('toggle_setting', setting_key=setting.key) }}" 
+                   class="btn btn-sm admin-panel-btn {{ 'btn-outline-info' if setting.value else 'btn-outline-success' }}">
+                    {{ 'Disable' if setting.value else 'Enable' }}
                 </a>
             </div>
         </div>
+        {% endfor %}
     </div>
-{% endblock %}
 
+    <div class="actions mt-5">
+        <a href="{{ url_for('index') }}" class="btn btn-lg btn-outline-light fw-bold">Back to Home</a>
+    </div>
+</div>
+{% endblock %}

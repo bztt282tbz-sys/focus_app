@@ -6,4 +6,3 @@ flask_limiter
 flask-sqlalchemy
 flask-login
 webauthn
-

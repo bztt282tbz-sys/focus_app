@@ -158,4 +158,12 @@ main.container {
     color: #bbb !important;
 }
 
+.btn-sm.custom-invert-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.admin-panel-btn {
+    min-width: 33%;
+}
 /* Keep your existing button and footer styles */

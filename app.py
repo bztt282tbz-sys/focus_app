@@ -50,7 +50,6 @@ db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# Define CSP without 'unsafe-inline' for scripts to maintain high security
 csp = {
     'default-src': '\'self\'',
     'script-src': [
@@ -68,7 +67,6 @@ csp = {
     ]
 }
 
-# Talisman configuration updated to use nonces for injected and external scripts
 Talisman(
     app, 
     force_https=True, 
@@ -95,13 +93,15 @@ class User(db.Model, UserMixin):
     is_active = db.Column(db.Boolean, default=True)
     prf_salt = db.Column(db.LargeBinary, nullable=True)
 
-class SystemSetting(db.Model):
+class SystemSettingBool(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    label = db.Column(db.String(100))
     key = db.Column(db.String(50), unique=True)
     value = db.Column(db.Boolean, default=True)
+    expected_value = db.Column(db.Boolean, default=True)
 
 def get_setting(key):
-    setting = SystemSetting.query.filter_by(key=key).first()
+    setting = SystemSettingBool.query.filter_by(key=key).first()
     return setting.value if setting else True
 
 @login_manager.user_loader
@@ -166,10 +166,9 @@ def onboarding():
 @admin_required
 def admin_dashboard():
     users = User.query.all()
-    reg_enabled = get_setting('registration_enabled')
-    login_enabled = get_setting('login_enabled')
-    api_enabled = get_setting('api_enabled')
-    return render_template('admin.html', users=users, reg_enabled=reg_enabled, login_enabled=login_enabled, api_enabled=api_enabled)
+    # Fetch all settings from the DB
+    settings = SystemSettingBool.query.all()
+    return render_template('admin.html', users=users, settings=settings)
 
 @app.route('/admin/toggle_user/<int:user_id>')
 @login_required
@@ -250,7 +249,7 @@ def generate_auth():
     session['auth_challenge'] = options.challenge
     user_data = {
         "options": options_to_json(options),
-        "salt": { base64.b64encode(u.credential_id).decode(): base64.b64encode(u.prf_salt).decode() 
+        "salts": { base64.b64encode(u.credential_id).decode(): base64.b64encode(u.prf_salt).decode() 
                    for u in users if u.prf_salt }
     }
     return jsonify(user_data)
@@ -285,9 +284,9 @@ def verify_auth():
 def toggle_setting(setting_key):
     if setting_key not in ['registration_enabled', 'login_enabled', 'api_enabled']:
         abort(400)
-    setting = SystemSetting.query.filter_by(key=setting_key).first()
+    setting = SystemSettingBool.query.filter_by(key=setting_key).first()
     if not setting:
-        setting = SystemSetting(key=setting_key, value=False)
+        setting = SystemSettingBool(key=setting_key, value=False)
         db.session.add(setting)
     else:
         setting.value = not setting.value
