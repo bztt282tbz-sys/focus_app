@@ -1,7 +1,88 @@
+/* 1. Global Layout */
+/* Ensure the body background is dark enough for the text to pop */
+body {
+    background-color: #1a1a1a; /* Slightly darker than #333 for better contrast */
+    color: #ffffff;
+}
 
-/* Persistent Admin Border */
+/* Force light colors for readability */
+.text-light {
+    color: #e0e0e0 !important; /* Soft white/light grey */
+    line-height: 1.6;
+}
+
+.text-white {
+    color: #ffffff !important;
+}
+
+.link-info {
+    color: #0dcaf0 !important; /* Bright cyan for visibility */
+}
+
+
+
+html, body {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: #333;
+    color: #fff;
+}
+
+/* 2. Standard Main Container (Normal Pages) */
+main.container {
+    flex: 1 0 auto;
+    padding-top: 2rem; /* Give normal pages some breathing room at the top */
+}
+
+/* 3. The New Centering Class (Special Pages) */
+.centered-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Vertical center */
+    align-items: center;     /* Horizontal center */
+    text-align: center;
+    min-height: 70vh;        /* Ensures it takes up significant space to center properly */
+}
+
+/* 4. Sticky Footer */
+.mastfoot {
+    flex-shrink: 0;
+    padding: 20px;
+    width: 100%;
+    text-align: center;
+    margin: auto;
+    margin-bottom: 0;
+}
+
+.mastfootcont {
+    margin: auto;
+    margin-bottom: 0;
+}
+
+/* 5. Button Invert Hover */
+.custom-invert-btn {
+    background-color: #fff !important;
+    color: #333 !important;
+    border: 2px solid #fff !important;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.custom-invert-btn:hover {
+    background-color: transparent !important;
+    color: #fff !important;
+    border-color: #fff !important;
+}
+
+/* Your existing styles below... */
 .admin-link {
-    border: 1px solid #02788f !important; /* Bootstrap "Info" Blue */
+    border: 1px solid #02788f !important;
     border-radius: 5px;
     padding-left: 15px !important;
     padding-right: 15px !important;
@@ -20,10 +101,61 @@
 .navbar-toggler-icon {
     background-image: url("data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke='rgba(255, 255, 255, 0.8)' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 8h24M4 16h24M4 24h24'/%3E%3C/svg%3E") !important;
 }
-.license li {
+.license ul {
     margin-top: 20px !important;
+    list-style: none !important;
 }
 
 .license {
-    margin-left: 10px !important;
+    margin-left: 20px !important;
 }
+
+.login-text {
+    margin-bottom: 40px;
+}
+
+/* Ensure the container stays centered but content is readable */
+/* Container Refinement */
+.content-body {
+    width: 100%;
+    max-width: 550px;
+    margin: 0 auto;
+}
+
+.feature-item {
+    border-left: 3px solid #0dcaf0; /* Adds a bright accent line */
+    padding-left: 1.5rem;
+    background: rgba(255, 255, 255, 0.03); /* Extremely subtle box to lift text */
+    padding-top: 10px;
+    padding-bottom: 10px;
+    border-radius: 0 8px 8px 0;
+}
+
+
+.centered-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 80vh;
+    padding: 2rem;
+    max-width: 800px; /* Prevents text from stretching too wide on desktop */
+    margin: 0 auto;
+}
+
+/* This keeps the text aligned left, but the container centered */
+.content-body {
+    width: 100%;
+    max-width: 500px; /* Adjust this to control how wide the text block is */
+}
+
+.feature-item {
+    border-left: 2px solid #555; /* Optional: adds a nice subtle vertical line */
+    padding-left: 1.5rem;
+}
+
+.text-muted {
+    color: #bbb !important;
+}
+
+/* Keep your existing button and footer styles */

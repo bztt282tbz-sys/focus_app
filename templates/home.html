@@ -1,24 +1,45 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="security-features">
-    <h2>Privacy by Design & Security Features</h2>
-    <div class="my-4">
-        <h3>What you can do:</h3>
-        <ul style="list-style: none; padding: 0;">
-            <li><strong>🔒 Go Passwordless:</strong> Register and login using secure device biometrics.</li>
-            <li><strong>🚀 WebAuthn PRF</strong> Not fully implemented :(</li>
-            <li><strong>🛡️ Privacy by Design:</strong> Your session is protected by strict security headers.</li>
-            <li><strong>⚡ Coming Soon:</strong> End-to-end encrypted productivity analytics.</li>
-        </ul>
+
+<div class="centered-content">
+    <h2 class="cover-heading mb-5">Privacy & Security</h2>
+    
+    <div class="content-body text-start">
+        <div class="feature-item mb-4">
+            <h5 class="text-white mb-1">🔒 Passwordless Security</h5>
+            <p class="text-light">Experience seamless login with <a class="link-info text-decoration-underline" href="https://support.apple.com/de-de/guide/iphone/iphf538ea8d0/ios">Passkeys</a>.</p>
+        </div>
+
+        <div class="feature-item mb-4">
+            <h5 class="text-white mb-1">🧘‍♂️ Purpose-Built Focus</h5>
+            <p class="text-light">A minimalist task tracker built for deep work. Features a clean API for external graphical displays.</p>
+        </div>
+
+        <div class="feature-item mb-4">
+            <h5 class="text-white mb-1">🚀 WebAuthn PRF</h5>
+            <p class="text-info small fw-bold">Status: Implementation in progress</p>
+        </div>
+
+        <div class="feature-item mb-4">
+            <h5 class="text-white mb-1">🛡️ Privacy by Design</h5>
+            <p class="text-light">Your data is protected by hardened security headers and modern session encryption.</p>
+        </div>
+
+        <div class="feature-item mb-4">
+            <h5 class="text-white mb-1">⚡ End-to-End Encryption</h5>
+            <p class="text-light">We are actively researching secure client-side key storage to enable robust E2EE.</p>
+        </div>
     </div>
-    <div class="links mt-4">
-        <a href="https://github.com/bztt282tbz-sys/focus_app" class="btn btn-outline-dark" target="_blank">View on GitHub</a>
+
+    <div class="actions mt-4">
+        <a href="https://github.com/bztt282tbz-sys/focus_app" 
+           class="btn btn-lg custom-invert-btn fw-bold" 
+           target="_blank">View on GitHub</a>
     </div>
 </div>
 
-<div class="legal-info mt-5 text-center text-muted" style="font-size: 0.8rem;">
-    <p>Project licensed under the <a href="https://en.wikipedia.org/wiki/MIT_License" target="_blank">MIT License</a>. <a href="{{ url_for('about') }}">View License</a>.</p>
-</div>
-</section>
+<footer class="mastfoot mt-auto">
+    <p class="text-light small opacity-75">Project licensed under the <a href="https://en.wikipedia.org/wiki/MIT_License" target="_blank" class="text-white">MIT License</a>.</p>
+</footer>
+
 {% endblock %}
-

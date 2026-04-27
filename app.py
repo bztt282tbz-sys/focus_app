@@ -186,7 +186,7 @@ def toggle_user(user_id):
 @limiter.limit("5 per hour")
 def register():
     if not get_setting('registration_enabled'):
-        flash("Registration is currently disabled.", "warning")
+        flash("Registration is currently disabled for maintenance.", "warning")
         return redirect(url_for('login'))
     return render_template('register.html')
 
