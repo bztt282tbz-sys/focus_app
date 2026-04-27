@@ -6,13 +6,19 @@
         <h3>What you can do:</h3>
         <ul style="list-style: none; padding: 0;">
             <li><strong>🔒 Go Passwordless:</strong> Register and login using secure device biometrics.</li>
+            <li><strong>🚀 WebAuthn PRF</strong> Not fully implemented :(</li>
             <li><strong>🛡️ Privacy by Design:</strong> Your session is protected by strict security headers.</li>
             <li><strong>⚡ Coming Soon:</strong> End-to-end encrypted productivity analytics.</li>
         </ul>
     </div>
-    <div class="cool-tech-badge" style="background: #eef2ff; padding: 1rem; border-radius: 12px; margin: 2rem 0;">
-        <p>🚀 This app already supports <strong>WebAuthn PRF</strong>. We derive a unique encryption key locally on your device every time you log in.</p>
+    <div class="links mt-4">
+        <a href="https://github.com/bztt282tbz-sys/focus_app" class="btn btn-outline-dark" target="_blank">View on GitHub</a>
     </div>
+</div>
+
+<div class="legal-info mt-5 text-center text-muted" style="font-size: 0.8rem;">
+    <p>Project licensed under the <a href="https://en.wikipedia.org/wiki/MIT_License" target="_blank">MIT License</a>. <a href="{{ url_for('about') }}">View License</a>.</p>
+</div>
 </section>
 {% endblock %}
 
