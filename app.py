@@ -250,7 +250,7 @@ def generate_auth():
     session['auth_challenge'] = options.challenge
     user_data = {
         "options": options_to_json(options),
-        "salts": { base64.b64encode(u.credential_id).decode(): base64.b64encode(u.prf_salt).decode() 
+        "salt": { base64.b64encode(u.credential_id).decode(): base64.b64encode(u.prf_salt).decode() 
                    for u in users if u.prf_salt }
     }
     return jsonify(user_data)
