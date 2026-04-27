@@ -2,6 +2,7 @@ import os
 import json
 import base64
 from flask import Flask, render_template, redirect, url_for, flash, request, jsonify, session, abort
+from datetime import datetime
 from flask_limiter import Limiter
 from flask_talisman import Talisman
 from flask_limiter.util import get_remote_address
@@ -99,6 +100,46 @@ class SystemSettingBool(db.Model):
     key = db.Column(db.String(50), unique=True)
     value = db.Column(db.Boolean, default=True)
     expected_value = db.Column(db.Boolean, default=True)
+    implemented = db.Column(db.Boolean, default=False)
+
+class UsersTaskUnencrypted(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Linked to User with an index for faster lookups as the DB grows
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    
+    # Increased to 100 for better UX; 42 is a bit tight for a task title
+    label = db.Column(db.String(100), nullable=False)
+    comment = db.Column(db.String(280))
+    
+    # 1: Low, 5: High
+    importance = db.Column(db.Integer, default=1) 
+    complexity = db.Column(db.Integer, default=2) 
+    
+    # Timestamps
+    date_created = db.Column(db.DateTime, default=db.func.now())
+    date_start = db.Column(db.DateTime, nullable=False, index=True)
+    date_due = db.Column(db.DateTime, nullable=True, index=True)
+    
+    # Visibility and Soft Deletion
+    is_hidden = db.Column(db.Boolean, default=False)
+    date_hidden = db.Column(db.DateTime, nullable=True) 
+    
+    # Unified Deletion: If date_deletion_requested is set, it's in the 'Trash'
+    # If date_deleted is set, it is officially purged/archived
+    date_deletion_requested = db.Column(db.DateTime, nullable=True)
+    date_deleted = db.Column(db.DateTime, nullable=True)
+
+    # Relationship back to User model
+    author = db.relationship('User', backref=db.backref('tasks', lazy=True))
+    progress_entries = db.relationship('TaskProgressEntry', backref='task', lazy=True, cascade="all, delete-orphan")
+    
+class TaskProgressEntry(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('users_task_unencrypted.id'), nullable=False, index=True)
+    points_completed = db.Column(db.Integer, nullable=False)
+    date_logged = db.Column(db.DateTime, default=db.func.now())
+
 
 def get_setting(key):
     setting = SystemSettingBool.query.filter_by(key=key).first()
@@ -170,7 +211,7 @@ def admin_dashboard():
     settings = SystemSettingBool.query.all()
     return render_template('admin.html', users=users, settings=settings)
 
-@app.route('/admin/toggle_user/<int:user_id>')
+@app.route('/admin/toggle_user/<int:user_id>', methods=['POST'])
 @login_required
 @admin_required
 def toggle_user(user_id):
@@ -278,7 +319,28 @@ def verify_auth():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
-@app.route('/admin/toggle_setting/<string:setting_key>')
+@app.route('/tasks/int:task_id/log_progress', methods=['POST'])
+@login_required
+@onboarding_required
+def log_task_progress(task_id):
+    task = UsersTaskUnencrypted.query.get_or_404(task_id)
+    if task.user_id != current_user.id:
+        abort(403)
+
+    points = int(request.form.get('points', 0))
+    current_done = sum(entry.points_completed for entry in task.progress_entries)
+
+    if points > 0 and (current_done + points) <= task.complexity:
+        new_entry = TaskProgressEntry(task_id=task.id, points_completed=points)
+        db.session.add(new_entry)
+        db.session.commit()
+        flash(f"Progress updated: +{points} points!", "success")
+    else:
+        flash("Invalid progress amount.", "danger")
+        
+    return redirect(url_for('view_task', task_id=task.id))
+
+@app.route('/admin/toggle_setting/<string:setting_key>', methods=['POST'])
 @login_required
 @admin_required
 def toggle_setting(setting_key):
@@ -295,6 +357,65 @@ def toggle_setting(setting_key):
     flash(f"System setting '{setting_key}' has been {status}.", "success")
     return redirect(url_for('admin_dashboard'))
 
+@app.route('/tasks/<int:task_id>', methods=['GET'])
+@login_required
+@onboarding_required
+def view_task(task_id):
+    # Fetch task or return 404 if it doesn't exist
+    task = UsersTaskUnencrypted.query.get_or_404(task_id)
+    completed_points = sum(entry.points_completed for entry in task.progress_entries)
+    remaining_points = max(0, task.complexity - completed_points)
+    task = UsersTaskUnencrypted.query.get_or_404(task_id)
+    if task.user_id != current_user.id:
+        abort(403)
+    return render_template('task_detail.html', 
+                       task=task, 
+                       completed_points=completed_points, 
+                       remaining_points=remaining_points, 
+                       title=f"Task: {task.label}")
+
+
+@app.route('/tasks/new', methods=['GET', 'POST'])
+@limiter.limit("10 per minute")
+@login_required
+@onboarding_required
+def new_task():
+    if request.method == 'POST':
+        label = request.form.get('label')
+        comment = request.form.get('comment')
+        importance = int(request.form.get('importance', 1))
+        complexity = int(request.form.get('complexity', 2))
+        date_start_str = request.form.get('date_start')
+        date_due_str = request.form.get('date_due')
+
+        # Basic validation mapped to your model
+        if not label or len(label) > 100:
+            flash("Task label is required and must be under 100 characters.", "danger")
+            return redirect(url_for('new_task'))
+
+        # Parse dates (HTML5 date inputs return YYYY-MM-DD)
+        date_start = datetime.strptime(date_start_str, '%Y-%m-%d') if date_start_str else datetime.utcnow()
+        date_due = datetime.strptime(date_due_str, '%Y-%m-%d') if date_due_str else None
+
+        # Create the new task
+        task = UsersTaskUnencrypted(
+            user_id=current_user.id,
+            label=label,
+            comment=comment,
+            importance=importance,
+            complexity=complexity,
+            date_start=date_start,
+            date_due=date_due
+        )
+        
+        db.session.add(task)
+        db.session.commit()
+        
+        flash("Task created successfully!", "success")
+        return redirect(url_for('dashboard'))
+
+    return render_template('new_task.html', title="New Task")
+
 @app.route('/login', methods=['GET'])
 @limiter.limit("5 per hour")
 def login():
@@ -305,7 +426,13 @@ def login():
 @login_required
 @onboarding_required
 def dashboard():
-    return render_template('dashboard.html')
+    tasks = UsersTaskUnencrypted.query.filter_by(
+        user_id=current_user.id,
+        is_hidden=False,
+        date_deletion_requested=None,
+        date_deleted=None
+    ).order_by(UsersTaskUnencrypted.importance.desc(), UsersTaskUnencrypted.date_due.asc()).all()
+    return render_template('dashboard.html', tasks=tasks, task_count=len(tasks))
 
 @app.route('/logout')
 @login_required
@@ -313,4 +440,6 @@ def logout():
     logout_user()
     flash("Logged out successfully.", "info")
     return redirect(url_for('login'))
+
+
 

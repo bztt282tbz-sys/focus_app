@@ -139,14 +139,14 @@ main.container {
     align-items: center;
     min-height: 80vh;
     padding: 2rem;
-    max-width: 800px; /* Prevents text from stretching too wide on desktop */
+    max-width: 300rem; /* Prevents text from stretching too wide on desktop */
     margin: 0 auto;
 }
 
 /* This keeps the text aligned left, but the container centered */
 .content-body {
     width: 100%;
-    max-width: 500px; /* Adjust this to control how wide the text block is */
+    max-width: 200rem; /* Adjust this to control how wide the text block is */
 }
 
 .feature-item {
@@ -164,6 +164,86 @@ main.container {
 }
 
 .admin-panel-btn {
-    min-width: 33%;
+    min-width: 8rem;
 }
-/* Keep your existing button and footer styles */
+
+/* New button styling for Admin Page */
+/* Allow the container to be fluid but capped at a wide 1200px */
+.centered-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 1200px; 
+    margin: 0 auto;
+    padding: 0 15px; /* Side padding for mobile breathing room */
+}
+
+/* This is the secret sauce for dynamic scaling */
+content-body {
+width: 100%;
+max-width: 900px; /* Gives the whole panel more room to breathe  */
+margin: 0 auto;
+}
+
+.admin-panel-btn {
+width: 100%; /* Fills the assigned grid column  /
+max-width: 300px; / Prevents it from becoming an infinite "noodle" button on ultra-wide /
+min-width: 140px; / Ensures it doesn't shrink too much on mobile  /
+display: block;
+margin-left: auto; / Aligns the button to the right of its column */
+}
+
+/* Ensure the legend items match the row height of the settings */
+.legend-row {
+min-height: 50px;
+}
+
+/*@media (min-width: 992px) {
+    .content-body {
+        width: 75%;  
+    }
+}*/
+
+
+
+premium-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: #3d3d3f;
+    border-radius: 10px;
+    outline: none;
+    cursor: pointer;
+}
+
+.premium-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 1px solid #c7c7cc;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+    transition: transform 0.15s ease-in-out;
+}
+
+.premium-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 1px solid #c7c7cc;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+    transition: transform 0.15s ease-in-out;
+}
+
+.premium-slider:active::-webkit-slider-thumb {
+    transform: scale(1.2);
+}
+
+.premium-slider:active::-moz-range-thumb {
+    transform: scale(1.2);
+}

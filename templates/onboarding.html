@@ -8,16 +8,57 @@
                 <label class="form-label">Public Username</label>
                 <input type="text" name="username" class="form-control" placeholder="e.g. AlexSmith" required>
             </div>
+            
             <div class="mb-4">
-                <label class="form-label">Security Preference<span class="badge text-bg-warning">INOP</span></label>
-                <select name="security_preference" class="form-control">
-                    <option value="Normal">Normal (Standard protection)</option>
-                    <option value="High">High (Strict verification required)</option>
+                <label class="form-label d-flex justify-content-between align-items-center">
+                    Security Preference
+                    <a href="javascript:void(0)" class="badge text-bg-info text-decoration-none" id="expandInfo">Expand to learn more</a>
+                </label>
+                
+                <select id="securitySelect" name="security_preference" class="form-control">
+                    <option value="low">No Encryption.</option>
+                    <option value="medium" selected="selected">Some Encryption. (Not implemented)</option>
                 </select>
+
+                <div id="securityDescription" class="mt-3 p-3 border rounded bg-light d-none">
+                    <small id="descriptionText" class="text-muted"></small>
+                </div>
             </div>
+
             <button type="submit" class="btn btn-dark w-100">Finish Setup</button>
         </form>
     </div>
 </div>
+<script nonce="{{ csp_nonce() }}">
+    const securitySelect = document.getElementById('securitySelect');
+const expandBtn = document.getElementById('expandInfo');
+const infoBox = document.getElementById('securityDescription');
+const descriptionText = document.getElementById('descriptionText');
+
+const descriptions = {
+    "low": "Low: None of your data is encrypted. Don't choose this option, unless you want the admin to read all your secrets. ",
+    "medium": "Standard (recommended): Your Task labels and descriptions will be end-2-end-encrypted. Your e2e-key is stored in your browser session. If you aren't using Arch (btw™) this is probably the safest your data has ever been on any server. \n\ntl/dr: If you don't know what any of this means, this is the best option for you.",
+    "high": "Strict: Not Available."
+};
+
+function updateDescription() {
+    const val = securitySelect.value;
+    descriptionText.innerText = descriptions[val];
+}
+
+expandBtn.addEventListener('click', function() {
+    // Toggle visibility
+    infoBox.classList.toggle('d-none');
+        
+    // Update text based on current selection
+    updateDescription();
+        
+    // Change button text
+    this.innerText = infoBox.classList.contains('d-none') ? "Expand to learn more" : "Collapse";
+});
+
+// Update text if user changes selection while box is open
+securitySelect.addEventListener('change', updateDescription);
+</script>
 {% endblock %}
 

@@ -24,6 +24,9 @@
                     <li class="nav-item">
                         <a class="nav-link {{ 'active' if request.endpoint == 'dashboard' }}" href="{{ url_for('dashboard') }}">Dashboard</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if request.endpoint == 'new_task' }}" href="{{ url_for('new_task') }}">+ New Task</a>
+                    </li>
                     {% if current_user.is_admin %}
                         <li class="nav-item">
                             <a class="nav-link admin-link {{ 'active' if request.endpoint == 'admin_dashboard' }}" href="{{ url_for('admin_dashboard') }}">Admin</a>
@@ -67,3 +70,5 @@
     <script nonce="{{ csp_nonce() }}" src="{{ url_for('static', filename='js/auth.js') }}"></script>
 </body>
 </html>
+
+

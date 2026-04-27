@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="centered-content py-4">
+    <div class="card bg-dark text-white border-secondary mx-auto w-100" style="max-width: 600px; border-radius: 15px;">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="card-title mb-0">Task Details</h2>
+                <span class="badge bg-secondary">ID: {{ task.id }}</span>
+            </div>
+            
+            <div class="mb-4">
+                <div class="d-flex justify-content-between mb-1">
+                    <label class="form-label text-light small">Task Progression</label>
+                    <span class="text-info small fw-bold">{{ completed_points }} / {{ task.complexity }} Points</span>
+                </div>
+                <div class="progress bg-black border border-secondary" style="height: 10px; border-radius: 10px;">
+                    {% set percentage = (completed_points / task.complexity) * 100 %}
+                    <div class="progress-bar bg-info progress-bar-striped progress-bar-animated" 
+                         role="progressbar" 
+                         style="width: {{ percentage }}%;" 
+                         aria-valuenow="{{ percentage }}" 
+                         aria-valuemin="0" 
+                         aria-valuemax="100"></div>
+                </div>
+            </div>
+
+            <form>
+                <div class="mb-3 text-start">
+                    <label class="form-label text-light">Task Name</label>
+                    <input type="text" class="form-control bg-dark text-white border-secondary" 
+                           value="{{ task.label }}" readonly>
+                </div>
+
+                <div class="mb-3 text-start">
+                    <label class="form-label text-light">Details</label>
+                    <textarea class="form-control bg-dark text-white border-secondary" 
+                              rows="2" readonly>{{ task.comment or 'No details provided.' }}</textarea>
+                </div>
+
+                <div class="row mb-3 text-start">
+                    <div class="col-6">
+                        <label class="form-label text-light">Importance</label>
+                        <input type="text" class="form-control bg-dark text-white border-secondary" 
+                               value="{{ task.importance }} - {% if task.importance >= 4 %}Critical{% elif task.importance == 3 %}Medium{% else %}Low{% endif %}" readonly>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label text-light">Complexity</label>
+                        <input type="text" class="form-control bg-dark text-white border-secondary" 
+                               value="{{ task.complexity }} Points" readonly>
+                    </div>
+                </div>
+            </form>
+
+            <hr class="border-secondary my-4">
+
+            {% if remaining_points > 0 %}
+            <div class="p-3 rounded border border-secondary mb-4" style="background: rgba(255, 255, 255, 0.03);">
+                <h6 class="text-white mb-3">Log Progress</h6>
+                <form action="{{ url_for('log_task_progress', task_id=task.id) }}" method="POST">
+                    <div class="mb-3">
+                        <input type="range" class="form-range custom-range" name="points" 
+                               min="1" max="{{ remaining_points }}" value="1" id="progSlider"
+                               oninput="document.getElementById('pointsVal').innerText = this.value">
+                        <div class="text-center mt-2">
+                            <span class="badge rounded-pill bg-info text-dark px-3">
+                                Add +<span id="pointsVal">1</span> Points
+                            </span>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-info w-100 fw-bold">Confirm Progress</button>
+                </form>
+            </div>
+            {% else %}
+            <div class="alert alert-info text-center border-0 py-3 mb-4" style="background: rgba(13, 202, 240, 0.1);">
+                <span class="fs-5">🏆</span> Task fully completed!
+            </div>
+            {% endif %}
+
+            <div class="d-grid gap-2">
+                <button type="button" class="btn btn-outline-secondary w-100" disabled>
+                    Edit Mode (Locked)
+                </button>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-link text-info text-decoration-none">← Back to Dashboard</a>
+            </div>
+            
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Styling the slider to match the info/dark theme */
+    .custom-range::-webkit-slider-runnable-track { background: #343a40; border-radius: 10px; }
+    .custom-range::-webkit-slider-thumb { background: #0dcaf0; }
+    .custom-range::-moz-range-thumb { background: #0dcaf0; }
+</style>
+{% endblock %}
