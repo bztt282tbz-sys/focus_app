@@ -4,7 +4,8 @@ with app.app_context():
     db.create_all()
     settings = [
         ('registration_enabled', True),
-        ('login_enabled', True)
+        ('login_enabled', True),
+        ('api_enabled', False)
     ]
     for key, value in settings:
         if not SystemSetting.query.filter_by(key=key).first():

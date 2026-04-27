@@ -93,6 +93,7 @@ class User(db.Model, UserMixin):
     sign_count = db.Column(db.Integer, default=0)
     is_admin = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
+    prf_salt = db.Column(db.LargeBinary, nullable=True)
 
 class SystemSetting(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -167,7 +168,8 @@ def admin_dashboard():
     users = User.query.all()
     reg_enabled = get_setting('registration_enabled')
     login_enabled = get_setting('login_enabled')
-    return render_template('admin.html', users=users, reg_enabled=reg_enabled, login_enabled=login_enabled)
+    api_enabled = get_setting('api_enabled')
+    return render_template('admin.html', users=users, reg_enabled=reg_enabled, login_enabled=login_enabled, api_enabled=api_enabled)
 
 @app.route('/admin/toggle_user/<int:user_id>')
 @login_required
@@ -214,13 +216,15 @@ def verify_register():
             expected_origin=ORIGIN,
             expected_rp_id=RP_ID
         ) 
+        user_salt = os.urandom(32)
         is_first = User.query.count() == 0 
         new_user = User(
             username=f"User_{os.urandom(4).hex()}",
             credential_id=verification.credential_id,
             public_key=verification.credential_public_key,
             sign_count=verification.sign_count,
-            is_admin=is_first
+            is_admin=is_first,
+            prf_salt=user_salt
         ) 
         db.session.add(new_user)
         db.session.commit()
@@ -244,7 +248,12 @@ def generate_auth():
         user_verification=UserVerificationRequirement.REQUIRED
     )
     session['auth_challenge'] = options.challenge
-    return options_to_json(options)
+    user_data = {
+        "options": options_to_json(options),
+        "salts": { base64.b64encode(u.credential_id).decode(): base64.b64encode(u.prf_salt).decode() 
+                   for u in users if u.prf_salt }
+    }
+    return jsonify(user_data)
 
 @app.route('/verify-auth', methods=['POST'])
 def verify_auth():
@@ -274,7 +283,7 @@ def verify_auth():
 @login_required
 @admin_required
 def toggle_setting(setting_key):
-    if setting_key not in ['registration_enabled', 'login_enabled']:
+    if setting_key not in ['registration_enabled', 'login_enabled', 'api_enabled']:
         abort(400)
     setting = SystemSetting.query.filter_by(key=setting_key).first()
     if not setting:

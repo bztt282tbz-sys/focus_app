@@ -67,8 +67,6 @@ async function registerDevice() {
     }
 }
 
-const PRF_SALT = new TextEncoder().encode("MySuperSecretAppSalt123456789012");
-
 async function authenticateDevice() {
     const authBtn = document.getElementById('auth-btn');
     logDebug("Requesting options...");
@@ -84,7 +82,12 @@ async function authenticateDevice() {
             throw new Error(err.error || "Server Error");
         }
 
-        const options = await resp.json();
+        const data = await resp.json();
+        const options = JSON.parse(data.options);
+        const PRF_SALT = data.salt;
+        
+
+
         options.challenge = bufferDecode(options.challenge);
         if(options.allowCredentials) {
             options.allowCredentials.forEach(c => c.id = bufferDecode(c.id));
