@@ -1,1 +1,22 @@
-/*empty*/
+
+/* Persistent Admin Border */
+.admin-link {
+    border: 1px solid #02788f !important; /* Bootstrap "Info" Blue */
+    border-radius: 5px;
+    padding-left: 15px !important;
+    padding-right: 15px !important;
+}
+
+/* Highlight the current page */
+.navbar-nav .nav-link.active {
+    color: #fff !important;
+    font-weight: 500;
+}
+
+/* Ensure the mobile toggler is visible if bg-dark is acting up */
+.navbar-toggler {
+    border-color: rgba(255, 255, 255, 0.5) !important;
+}
+.navbar-toggler-icon {
+    background-image: url("data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath stroke='rgba(255, 255, 255, 0.8)' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 8h24M4 16h24M4 24h24'/%3E%3C/svg%3E") !important;
+}

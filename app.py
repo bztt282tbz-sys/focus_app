@@ -1,4 +1,3 @@
-
 import os
 import json
 import base64
@@ -30,7 +29,6 @@ load_dotenv()
 app = Flask(__name__)
 
 # --- CONFIGURATION ---
-
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
 RP_ID = os.environ.get('RP_ID')
 RP_NAME = "Focus App"
@@ -47,25 +45,37 @@ app.config.update(
 if not app.config['SECRET_KEY']:
     raise RuntimeError("FATAL: SECRET_KEY is not set.")
 
-
 # --- EXTENSIONS ---
-
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+
+# Define CSP without 'unsafe-inline' for scripts to maintain high security
 csp = {
     'default-src': '\'self\'',
-    'script-src': '\'self\'',
-    'style-src': [
+    'script-src': [
         '\'self\'',
-        'https://cdn.jsdelivr.net' 
+        'https://cdn.jsdelivr.net'
     ],
     'style-src': [
         '\'self\'',
-        'https://cdn.jsdelivr.net' 
+        'https://cdn.jsdelivr.net',
+        '\'unsafe-inline\''
+    ],
+    'img-src': [
+        '\'self\'',
+        'data:'
     ]
 }
-Talisman(app, force_https=True, content_security_policy=csp)
+
+# Talisman configuration updated to use nonces for injected and external scripts
+Talisman(
+    app, 
+    force_https=True, 
+    content_security_policy=csp,
+    content_security_policy_nonce_in=['script-src']
+)
+
 limiter = Limiter(
     get_remote_address,
     app=app,
@@ -73,14 +83,11 @@ limiter = Limiter(
 )
 
 # --- MODELS ---
-
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=True)
     is_onboarded = db.Column(db.Boolean, default=False)
     security_preference = db.Column(db.String(20), default="Normal")
-    credential_id = db.Column(db.LargeBinary, nullable=True)
-    temp_username = db.Column(db.String(50), nullable=True)
     credential_id = db.Column(db.LargeBinary, nullable=True)
     public_key = db.Column(db.LargeBinary, nullable=True)
     sign_count = db.Column(db.Integer, default=0)
@@ -117,7 +124,6 @@ def onboarding_required(f):
     return decorated_function
 
 # --- ROUTES ---
-
 @app.route('/')
 def index():
     return render_template('home.html', title="Home")
@@ -162,7 +168,6 @@ def admin_dashboard():
 @app.route('/admin/toggle_user/<int:user_id>')
 @login_required
 @admin_required
-@onboarding_required
 def toggle_user(user_id):
     user = User.query.get_or_404(user_id)
     if user.id == current_user.id:
@@ -199,18 +204,13 @@ def generate_register():
 @app.route('/verify-register', methods=['POST'])
 def verify_register():
     try:
-        # Verify the WebAuthn registration response
         verification = verify_registration_response(
             credential=request.json,
             expected_challenge=session.get('reg_challenge'),
             expected_origin=ORIGIN,
             expected_rp_id=RP_ID
         ) 
-        
-        # Determine if this is the first user (admin)
         is_first = User.query.count() == 0 
-        
-        # Create and save the new user
         new_user = User(
             username=f"User_{os.urandom(4).hex()}",
             credential_id=verification.credential_id,
@@ -218,10 +218,8 @@ def verify_register():
             sign_count=verification.sign_count,
             is_admin=is_first
         ) 
-        
         db.session.add(new_user)
         db.session.commit()
-        
         flash("Registration successful! Please login.", "success") 
         return jsonify({"status": "ok", "redirect": url_for('login')})
     except Exception as e:
@@ -272,19 +270,14 @@ def verify_auth():
 @login_required
 @admin_required
 def toggle_setting(setting_key):
-    # Security check: only allow specific keys to be modified
     if setting_key not in ['registration_enabled', 'login_enabled']:
         abort(400)
-
     setting = SystemSetting.query.filter_by(key=setting_key).first()
-    
     if not setting:
-        # Create it if it doesn't exist for some reason
         setting = SystemSetting(key=setting_key, value=False)
         db.session.add(setting)
     else:
         setting.value = not setting.value
-    
     db.session.commit()
     status = "enabled" if setting.value else "disabled"
     flash(f"System setting '{setting_key}' has been {status}.", "success")

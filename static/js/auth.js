@@ -6,12 +6,21 @@ const setStatus = (msg, isError = false) => {
 const logDebug = (msg, isError = false) => {
     const debugBox = document.getElementById('debug-info');
     const debugText = document.getElementById('debug-text');
-    if (debugBox) {
+    if (debugBox && debugText) {
         debugBox.style.display = 'block';
         debugText.innerText = msg;
         debugText.style.color = isError ? 'red' : 'black';
     }
 };
+
+function bufferDecode(value) {
+    return Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+}
+
+function bufferEncode(value) {
+    return btoa(String.fromCharCode.apply(null, new Uint8Array(value)))
+        .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+}
 
 async function registerDevice() {
     const regBtn = document.getElementById('reg-btn');
@@ -24,7 +33,6 @@ async function registerDevice() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
         });
-        
         const options = await resp.json();
         options.challenge = bufferDecode(options.challenge);
         options.user.id = bufferDecode(options.user.id);
@@ -36,8 +44,8 @@ async function registerDevice() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                id: cred.id, // REQUIRED
-                rawId: bufferEncode(cred.rawId), // REQUIRED
+                id: cred.id,
+                rawId: bufferEncode(cred.rawId),
                 type: cred.type,
                 response: {
                     clientDataJSON: bufferEncode(cred.response.clientDataJSON),
@@ -59,30 +67,10 @@ async function registerDevice() {
     }
 }
 
-function bufferDecode(value) {
-    return Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
-}
-
-function bufferEncode(value) {
-    return btoa(String.fromCharCode.apply(null, new Uint8Array(value)))
-        .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
-}
-
 const PRF_SALT = new TextEncoder().encode("MySuperSecretAppSalt123456789012");
 
-
-// Authentication Logic
 async function authenticateDevice() {
-    const debugText = document.getElementById('debug-text');
-    const debugBox = document.getElementById('debug-info');
     const authBtn = document.getElementById('auth-btn');
-
-    const logDebug = (msg, isError = false) => {
-        debugBox.style.display = 'block';
-        debugText.innerText = msg;
-        debugText.style.color = isError ? 'red' : 'black';
-    };
-
     logDebug("Requesting options...");
     authBtn.disabled = true;
 
@@ -127,7 +115,6 @@ async function authenticateDevice() {
                 }
             })
         });
-
         const result = await verifyResp.json();
         if(verifyResp.ok) {
             window.location.href = result.redirect;
@@ -140,7 +127,6 @@ async function authenticateDevice() {
     }
 }
 
-// Event Listeners to replace 'onclick' attributes (which CSP blocks)
 document.addEventListener("DOMContentLoaded", () => {
     const regBtn = document.getElementById('reg-btn');
     const authBtn = document.getElementById('auth-btn');
@@ -151,10 +137,7 @@ document.addEventListener("DOMContentLoaded", () => {
     
     if (adminKeyDisplay) {
         const storedKey = sessionStorage.getItem("e2e_key");
-        if (storedKey) {
-            adminKeyDisplay.innerText = storedKey;
-        } else {
-            adminKeyDisplay.innerText = "Key will appear here after a successful passkey login.";
-        }
+        adminKeyDisplay.innerText = storedKey || "Key will appear here after a successful passkey login.";
     }
 });
+
