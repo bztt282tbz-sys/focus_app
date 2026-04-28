@@ -15,12 +15,16 @@
 
             <div class="d-flex justify-content-between align-items-start mb-4">
                 <h2 class="card-title mb-0 decrypt-me">{{ task.label }}</h2>
-                {% if task.importance >= 4 %}
+                {% if task.importance >= 5 %}
                     <span class="badge rounded-pill bg-danger">Critical</span>
+                {% if task.importance >= 4 %}
+                    <span class="badge rounded-pill bg-danger">High</span>
                 {% elif task.importance == 3 %}
-                    <span class="badge rounded-pill bg-warning text-dark">Important</span>
+                    <span class="badge rounded-pill bg-warning text-dark">Medium</span>
+                {% elif task.importance == 2 %}
+                    <span class="badge rounded-pill bg-warning text-dark">Low</span>
                 {% else %}
-                    <span class="badge rounded-pill bg-secondary">Routine</span>
+                    <span class="badge rounded-pill bg-secondary">Optional</span>
                 {% endif %}
             </div>
 
