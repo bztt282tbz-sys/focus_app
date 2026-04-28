@@ -1,122 +1,170 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ task.label }} - Details</title>
+    <style>
+        /* Premium Slider Styling */
+        .premium-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 10px;
+            background: #333; /* Fallback */
+            outline: none;
+            cursor: pointer;
+            margin: 25px 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
 
-{% block content %}
-<div class="centered-content">
-    <div class="card border-0 shadow-lg bg-dark text-white rounded-5 overflow-hidden" style="width: 100%; max-width: 450px;">
-        <div class="card-body p-5 text-center">
-            <div class="mb-4">
-                <p class="text-uppercase fw-bold text-muted small ls-1 mb-3" style="letter-spacing: 2px;">Task Progress</p>
-                <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style="width: 70px; height: 70px; background: linear-gradient(135deg, #007aff, #00c6ff);">
-                    <span class="h2 mb-0">⚡</span>
+        .premium-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 4px solid #007aff;
+            box-shadow: 0 0 10px rgba(0, 122, 255, 0.8);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .premium-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 4px solid #007aff;
+            box-shadow: 0 0 10px rgba(0, 122, 255, 0.8);
+            transition: transform 0.2s ease;
+        }
+
+        .premium-slider:active::-webkit-slider-thumb {
+            transform: scale(1.2);
+        }
+
+        .points-display-badge {
+            background: rgba(0, 122, 255, 0.2);
+            color: #007aff;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            border: 1px solid rgba(0, 122, 255, 0.3);
+        }
+
+        /* Support for the "Fill" effect on the left side of the thumb */
+        .premium-slider {
+            background: linear-gradient(to right, #007aff 0%, #333 0%);
+        }
+    </style>
+</head>
+<body>
+    {% extends "base.html" %}
+    {% block content %}
+    <div class="centered-content">
+        <div class="content-body text-start">
+            <div class="feature-item mb-4">
+                <h2 class="text-white border-bottom pb-3 mb-4">{{ task.label }}</h2>
+                
+                <div class="mb-4">
+                    <label class="text-muted small text-uppercase fw-bold ls-1">Task Details</label>
+                    <p class="text-white fs-5">{{ task.comment or 'No description provided.' }}</p>
                 </div>
-                <h2 class="fw-bold mb-1">{{ task.label }}</h2>
-                <p class="text-muted small">Status: {{ completed_points }} / {{ task.complexity }} points</p>
-            </div>
 
-            {% if remaining_points > 0 %}
-            <form action="{{ url_for('log_task_progress', task_id=task.id) }}" method="POST">
-                <div class="mb-5 mt-4 text-start">
+                <div class="row g-4 mb-4">
+                    <div class="col-6">
+                        <label class="text-muted small text-uppercase fw-bold ls-1 d-block mb-1">Importance</label>
+                        <div class="text-primary fs-4">
+                            {% for i in range(task.importance) %}★{% endfor %}
+                            <span class="text-muted small ms-1">({{ task.importance }}/5)</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <label class="text-muted small text-uppercase fw-bold ls-1 d-block mb-1">Complexity</label>
+                        <p class="text-white fw-bold fs-5 mb-0">{{ task.complexity }} Points</p>
+                    </div>
+                </div>
+
+                <div class="row g-4 mb-4">
+                    <div class="col-6">
+                        <label class="text-muted small text-uppercase fw-bold ls-1 d-block mb-1">Start Date</label>
+                        <p class="text-white mb-0">{{ task.date_start.strftime('%Y-%m-%d') }}</p>
+                    </div>
+                    <div class="col-6">
+                        <label class="text-muted small text-uppercase fw-bold ls-1 d-block mb-1">Due Date</label>
+                        <p class="text-white mb-0">{{ task.date_due.strftime('%Y-%m-%d') if task.date_due else 'Flexible' }}</p>
+                    </div>
+                </div>
+
+                <hr class="my-5 border-secondary opacity-25">
+
+                <div class="progress-section">
                     <div class="d-flex justify-content-between align-items-end mb-3">
-                        <label class="form-label fw-bold text-muted mb-0 small">Points to add</label>
-                        <span id="points-display" class="h2 fw-bold text-info mb-0" style="color: #007aff !important;">+0</span>
+                        <label class="text-muted small text-uppercase fw-bold ls-1">Current Progress</label>
+                        <span class="text-white fw-bold">{{ completed_points }} <span class="text-muted">/ {{ task.complexity }} pts</span></span>
                     </div>
-                    
-                    <input type="range" 
-                           class="premium-slider-custom" 
-                           id="points-slider" 
-                           name="points" 
-                           min="0" 
-                           max="{{ remaining_points }}" 
-                           value="0">
-                    
-                    <div class="d-flex justify-content-between mt-2 text-muted small fw-medium">
-                        <span>0</span>
-                        <span>{{ remaining_points }}</span>
+                    <div class="progress bg-dark mb-5" style="height: 12px; border-radius: 10px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" 
+                             role="progressbar" 
+                             style="width: {{ (completed_points / task.complexity * 100)|round|int }}%">
+                        </div>
                     </div>
+
+                    {% if remaining_points > 0 %}
+                    <form action="{{ url_for('log_task_progress', task_id=task.id) }}" method="POST" class="mt-4 p-4 rounded-4" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="text-white fw-bold">Log New Progress</label>
+                            <span class="points-display-badge">+<span id="points-display">1</span> Point</span>
+                        </div>
+                        <input type="range" 
+                               class="premium-slider" 
+                               id="points-slider" 
+                               name="points" 
+                               min="1" 
+                               max="{{ remaining_points }}" 
+                               value="1">
+                        <button type="submit" class="btn btn-primary w-100 fw-bold py-3 mt-2 rounded-3 shadow-sm">Submit Progress</button>
+                    </form>
+                    {% else %}
+                    <div class="alert alert-success text-center fw-bold rounded-3">
+                        ✓ This task is fully completed!
+                    </div>
+                    {% endif %}
                 </div>
-
-                <button type="submit" id="submit-btn" class="btn btn-primary btn-lg w-100 rounded-pill py-3 fw-bold shadow-sm" style="background-color: #007aff; border: none;" disabled>
-                    Update Progress
-                </button>
-            </form>
-            {% else %}
-            <div class="p-4 rounded-4 bg-dark-subtle text-center border border-success border-opacity-25 mt-4">
-                <div class="h5 mb-1 text-success fw-bold">✓ Task Completed</div>
-                <p class="text-muted small mb-0">Well done! You've achieved your goal.</p>
             </div>
-            {% endif %}
 
-            <div class="mt-5">
-                <a href="{{ url_for('dashboard') }}" class="text-decoration-none text-muted fw-bold small">
-                    ← Back to Dashboard
-                </a>
+            <div class="actions mt-5 text-center">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-light px-4">Back to Dashboard</a>
             </div>
         </div>
     </div>
-</div>
 
-<style>
-    .bg-dark {
-        background-color: #121212 !important;
-    }
-
-    /* Custom Slider Implementation to match Unknown.png */
-    .premium-slider-custom {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 100%;
-        height: 6px;
-        border-radius: 10px;
-        background: #2a2a2a;
-        outline: none;
-        cursor: pointer;
-    }
-
-    .premium-slider-custom::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 26px;
-        height: 26px;
-        border-radius: 50%;
-        background: #ffffff;
-        border: 1px solid #ddd;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-    }
-
-    .premium-slider-custom::-moz-range-thumb {
-        width: 26px;
-        height: 26px;
-        border-radius: 50%;
-        background: #ffffff;
-        border: 1px solid #ddd;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-    }
-</style>
-
-<script nonce="{{ csp_nonce() }}">
-document.addEventListener('DOMContentLoaded', function() {
-    const slider = document.getElementById('points-slider');
-    const display = document.getElementById('points-display');
-    const btn = document.getElementById('submit-btn');
-
-    function updateSlider() {
-        if (!slider) return;
+    <script nonce="{{ csp_nonce() }}">
+    document.addEventListener('DOMContentLoaded', function() {
+        const slider = document.getElementById('points-slider');
+        const display = document.getElementById('points-display');
         
-        const val = parseInt(slider.value);
-        const max = parseInt(slider.max) || 1;
-        const percentage = (val / max) * 100;
+        function updateSlider() {
+            if (!slider) return;
+            const val = slider.value;
+            const min = slider.min ? slider.min : 0;
+            const max = slider.max ? slider.max : 100;
+            const newVal = Number(((val - min) * 100) / (max - min));
+            
+            if (display) display.textContent = val;
+            
+            // Updates the blue fill effect
+            slider.style.background = `linear-gradient(to right, #007aff ${newVal}%, #333 ${newVal}%)`;
+        }
 
-        // Fills the left side with blue (#007aff) to match reference image
-        slider.style.background = `linear-gradient(to right, #007aff 0%, #007aff ${percentage}%, #2a2a2a ${percentage}%, #2a2a2a 100%)`;
-        
-        display.innerText = '+' + val;
-        btn.disabled = (val === 0);
-    }
-
-    if (slider) {
-        slider.addEventListener('input', updateSlider);
-        updateSlider();
-    }
-});
-</script>
-{% endblock %}
+        if (slider) {
+            slider.addEventListener('input', updateSlider);
+            updateSlider(); // Initial call to set background on load
+        }
+    });
+    </script>
+    {% endblock %}
+</body>
+</html>
