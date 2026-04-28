@@ -1,0 +1,141 @@
+I understand perfectly. You want a professional implementation of a one-to-many relationship where a Task has multiple Progress Entries. [cite_start]I have renamed "doneness" to **Task Progression** to better reflect the technical structure[cite: 36, 38]. 
+
+[cite_start]The following updates implement the new table, the logic to handle multiple entries per task, and the refined "premium" slider styling without using the forbidden terms[cite: 32, 53].
+
+### 1. Database Model Updates (`app.py`)
+
+[cite_start]I have added the `TaskProgressEntry` class to handle multiple entries per task and linked it via a foreign key[cite: 36].
+
+class TaskProgressEntry(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('users_task_unencrypted.id'), nullable=False, index=True)
+    points_completed = db.Column(db.Integer, nullable=False)
+    date_logged = db.Column(db.DateTime, default=db.func.now())
+
+# Inside the UsersTaskUnencrypted class, add this relationship:
+class UsersTaskUnencrypted(db.Model):
+    # [cite_start]... existing fields[cite: 36, 37, 38]...
+    progress_entries = db.relationship('TaskProgressEntry', backref='task', lazy=True, cascade="all, delete-orphan")
+
+### 2. Backend Logic Updates (`app.py`)
+
+[cite_start]The `view_task` route now aggregates all points from the new table to determine remaining complexity[cite: 52]. [cite_start]I have also added the route to record new entries[cite: 53].
+
+@app.route('/tasks/<int:task_id>', methods=['GET'])
+@login_required
+@onboarding_required
+def view_task(task_id):
+    task = UsersTaskUnencrypted.query.get_or_404(task_id)
+    if task.user_id != current_user.id:
+        abort(403)
+        
+    completed_points = sum(entry.points_completed for entry in task.progress_entries)
+    remaining_points = max(0, task.complexity - completed_points)
+    
+    return render_template('task_detail.html', 
+                           task=task, 
+                           completed_points=completed_points, 
+                           remaining_points=remaining_points, 
+                           title=f"Task: {task.label}")
+
+@app.route('/tasks/<int:task_id>/log_progress', methods=['POST'])
+@login_required
+@onboarding_required
+def log_task_progress(task_id):
+    task = UsersTaskUnencrypted.query.get_or_404(task_id)
+    if task.user_id != current_user.id:
+        abort(403)
+        
+    points_to_add = int(request.form.get('points', 0))
+    current_total = sum(entry.points_completed for entry in task.progress_entries)
+    
+    if 0 < points_to_add <= (task.complexity - current_total):
+        new_entry = TaskProgressEntry(task_id=task.id, points_completed=points_to_add)
+        db.session.add(new_entry)
+        db.session.commit()
+        flash(f"Recorded {points_to_add} points of progress.", "success")
+    else:
+        flash("Invalid point value submitted.", "danger")
+        
+    return redirect(url_for('view_task', task_id=task.id))
+
+### 3. Frontend UI Updates (`templates/task_detail.html`)
+
+[cite_start]This replaces the static complexity field with a dynamic progress tracker and the slider for logging new increments[cite: 20, 26, 31].
+
+&lt;div class="row mb-3 text-start"&gt;
+    &lt;div class="col-md-12"&gt;
+        &lt;label class="form-label text-light"&gt;Task Progression: {{ completed_points }} / {{ task.complexity }} Points&lt;/label&gt;
+        &lt;div class="progress bg-dark border border-secondary" style="height: 8px; border-radius: 10px;"&gt;
+            &lt;div class="progress-bar bg-info" role="progressbar" 
+                 style="width: {{ (completed_points / task.complexity) * 100 }}%;"&gt;&lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+
+{% if remaining_points &gt; 0 %}
+&lt;div class="feature-item p-4 mb-4 rounded border-0" style="background: rgba(255, 255, 255, 0.05);"&gt;
+    &lt;h5 class="text-white mb-3"&gt;Add Progress Entry&lt;/h5&gt;
+    &lt;form action="{{ url_for('log_task_progress', task_id=task.id) }}" method="POST"&gt;
+        &lt;div class="mb-4"&gt;
+            &lt;input type="range" class="premium-slider w-100" name="points" 
+                   min="1" max="{{ remaining_points }}" value="1" id="progSlider" 
+                   oninput="document.getElementById('pointsVal').innerText = this.value"&gt;
+            &lt;div class="text-center mt-3"&gt;
+                &lt;span class="badge bg-info text-dark px-3 py-2"&gt;Log +&lt;span id="pointsVal"&gt;1&lt;/span&gt; points&lt;/span&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+        &lt;button type="submit" class="btn btn-lg custom-invert-btn w-100 fw-bold"&gt;Confirm Progress&lt;/button&gt;
+    &lt;/form&gt;
+&lt;/div&gt;
+{% else %}
+&lt;div class="alert alert-info text-center border-0 py-3" style="background: rgba(13, 202, 240, 0.15);"&gt;
+    🏆 All complexity points for this task have been completed.
+&lt;/div&gt;
+{% endif %}
+
+### 4. Revised CSS (`static/css/style.css`)
+
+[cite_start]Revised to focus on a high-end, minimalist aesthetic[cite: 59, 71].
+
+/* Premium Interaction Slider */
+.premium-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: #3d3d3f;
+    border-radius: 10px;
+    outline: none;
+    cursor: pointer;
+}
+
+.premium-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 1px solid #c7c7cc;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+    transition: transform 0.15s ease-in-out;
+}
+
+.premium-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 1px solid #c7c7cc;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+    transition: transform 0.15s ease-in-out;
+}
+
+.premium-slider:active::-webkit-slider-thumb {
+    transform: scale(1.2);
+}
+
+.premium-slider:active::-moz-range-thumb {
+    transform: scale(1.2);
+}
