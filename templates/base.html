@@ -29,7 +29,7 @@
                     </li>
                     {% if current_user.is_admin %}
                         <li class="nav-item">
-                            <a class="nav-link admin-link {{ 'active' if request.endpoint == 'admin_dashboard' }}" href="{{ url_for('admin_dashboard') }}">Admin</a>
+                            <a style="border: 1px; border-color: aqua;" class="nav-link {{ 'active' if request.endpoint == 'admin_dashboard' }}" href="{{ url_for('admin_dashboard') }}">Admin</a>
                         </li>
                     {% endif %}
                 {% endif %}

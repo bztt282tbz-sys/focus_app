@@ -123,6 +123,7 @@ class TaskProgressEntry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     task_id = db.Column(db.Integer, db.ForeignKey('users_task_unencrypted.id'), nullable=False, index=True)
     points_completed = db.Column(db.Integer, nullable=False)
+    comment = db.Column(db.String(280), nullable=True) 
     date_logged = db.Column(db.DateTime, default=db.func.now())
 
 def get_setting(key):
@@ -305,13 +306,19 @@ def log_task_progress(task_id):
         abort(403)
 
     points = int(request.form.get('points', 0))
+    comment = request.form.get('update_comment') # Capture the comment
     current_done = sum(entry.points_completed for entry in task.progress_entries)
 
     if points > 0 and (current_done + points) <= task.complexity:
-        new_entry = TaskProgressEntry(task_id=task.id, points_completed=points)
+        # Save the comment along with the points
+        new_entry = TaskProgressEntry(
+            task_id=task.id, 
+            points_completed=points, 
+            comment=comment
+        )
         db.session.add(new_entry)
         db.session.commit()
-        flash(f"Progress updated: +{points} points!", "success")
+        flash(f"Progress updated!", "success")
     else:
         flash("Invalid progress amount.", "danger")
         
@@ -319,6 +326,7 @@ def log_task_progress(task_id):
 
 @app.route('/admin/toggle_setting/<string:setting_key>', methods=['POST'])
 @login_required
+@onboarding_required
 @admin_required
 def toggle_setting(setting_key):
     if setting_key not in ['registration_enabled', 'login_enabled', 'api_enabled']:
