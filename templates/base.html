@@ -69,6 +69,16 @@
             {% endif %}
             {% endwith %}
         </div>
+        <style>
+            /* Hide the encrypted gibberish while JS is working */
+            .decrypt-me.is-decrypting {
+                opacity: 0;
+                user-select: none;
+            }
+            .decrypt-me {
+                transition: opacity 0.3s ease-in;
+            }
+        </style>
         {% block content %}{% endblock %}
     </main>
     <script nonce="{{ csp_nonce() }}" src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

@@ -105,11 +105,11 @@ class SystemSettingBool(db.Model):
     expected_value = db.Column(db.Boolean, default=True)
     implemented = db.Column(db.Boolean, default=False)
 
-class UsersTaskUnencrypted(db.Model):
+class UsersTask(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
-    label = db.Column(db.String(100), nullable=False)
-    comment = db.Column(db.String(280))
+    label = db.Column(db.String(65536), nullable=False)
+    comment = db.Column(db.String(65536))
     importance = db.Column(db.Integer, default=1) 
     complexity = db.Column(db.Integer, default=2) 
     date_created = db.Column(db.DateTime, default=db.func.now())
@@ -134,7 +134,7 @@ class UsersTaskUnencrypted(db.Model):
     
 class TaskProgressEntry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    task_id = db.Column(db.Integer, db.ForeignKey('users_task_unencrypted.id'), nullable=False, index=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('users_task.id'), nullable=False, index=True)
     points_completed = db.Column(db.Integer, nullable=False)
     comment = db.Column(db.String(280), nullable=True) 
     date_logged = db.Column(db.DateTime, default=db.func.now())
@@ -314,7 +314,7 @@ def verify_auth():
 @login_required
 @onboarding_required
 def log_task_progress(task_id):
-    task = UsersTaskUnencrypted.query.get_or_404(task_id)
+    task = UsersTask.query.get_or_404(task_id)
     if task.user_id != current_user.id:
         abort(403)
 
@@ -344,8 +344,8 @@ def view_user_detail(user_id):
     user = User.query.get_or_404(user_id)
     # We can also fetch their task count or last activity here
     task_stats = {
-        "total": UsersTaskUnencrypted.query.filter_by(user_id=user.id).count(),
-        "active": UsersTaskUnencrypted.query.filter_by(user_id=user.id, is_hidden=False).count()
+        "total": UsersTask.query.filter_by(user_id=user.id).count(),
+        "active": UsersTask.query.filter_by(user_id=user.id, is_hidden=False).count()
     }
     return render_template('user_detail.html', user=user, stats=task_stats, title=f"Manage {user.username}")
 
@@ -371,7 +371,7 @@ def toggle_setting(setting_key):
 @login_required
 @onboarding_required
 def view_task(task_id):
-    task = UsersTaskUnencrypted.query.get_or_404(task_id)
+    task = UsersTask.query.get_or_404(task_id)
     if task.user_id != current_user.id:
         abort(403)
         
@@ -405,7 +405,7 @@ def new_task():
         date_start = datetime.strptime(date_start_str, '%Y-%m-%d') if date_start_str else datetime.utcnow()
         date_due = datetime.strptime(date_due_str, '%Y-%m-%d') if date_due_str else None
 
-        task = UsersTaskUnencrypted(
+        task = UsersTask(
             user_id=current_user.id,
             label=label,
             comment=comment,
@@ -439,12 +439,12 @@ def dashboard():
     ).group_by(TaskProgressEntry.task_id).subquery()
 
     # 2. Base query for this user's tasks
-    base_query = UsersTaskUnencrypted.query.outerjoin(
-        progress_subquery, UsersTaskUnencrypted.id == progress_subquery.c.task_id
+    base_query = UsersTask.query.outerjoin(
+        progress_subquery, UsersTask.id == progress_subquery.c.task_id
     ).filter(
-        UsersTaskUnencrypted.user_id == current_user.id,
-        UsersTaskUnencrypted.is_hidden == False,
-        UsersTaskUnencrypted.date_deleted == None
+        UsersTask.user_id == current_user.id,
+        UsersTask.is_hidden == False,
+        UsersTask.date_deleted == None
     )
 
     # FIX: Get current UTC time and strip the time components for a "today" comparison
@@ -454,14 +454,14 @@ def dashboard():
     
     # 3. Filter for Focus List
     focus_tasks = base_query.filter(
-        func.coalesce(progress_subquery.c.total_done, 0) < UsersTaskUnencrypted.complexity,
-        (UsersTaskUnencrypted.date_due == None) | (UsersTaskUnencrypted.date_due >= today_dt)
-    ).order_by(UsersTaskUnencrypted.importance.desc()).all()
+        func.coalesce(progress_subquery.c.total_done, 0) < UsersTask.complexity,
+        (UsersTask.date_due == None) | (UsersTask.date_due >= today_dt)
+    ).order_by(UsersTask.importance.desc()).all()
 
     # 4. Filter for Past/Completed List
     past_tasks = base_query.filter(
-        (func.coalesce(progress_subquery.c.total_done, 0) >= UsersTaskUnencrypted.complexity) |
-        (UsersTaskUnencrypted.date_due < today_dt)
+        (func.coalesce(progress_subquery.c.total_done, 0) >= UsersTask.complexity) |
+        (UsersTask.date_due < today_dt)
     ).all()
 
     return render_template(
@@ -490,13 +490,13 @@ def calendar_view():
     else:
         end_date = datetime(year, month + 1, 1)
         
-    # Ensure UsersTaskUnencrypted is correctly referenced
-    tasks = UsersTaskUnencrypted.query.filter(
-        UsersTaskUnencrypted.user_id == current_user.id,
-        UsersTaskUnencrypted.is_hidden == False,
-        UsersTaskUnencrypted.date_deleted == None,
-        UsersTaskUnencrypted.date_due >= start_date,
-        UsersTaskUnencrypted.date_due < end_date
+    # Ensure UsersTask is correctly referenced
+    tasks = UsersTask.query.filter(
+        UsersTask.user_id == current_user.id,
+        UsersTask.is_hidden == False,
+        UsersTask.date_deleted == None,
+        UsersTask.date_due >= start_date,
+        UsersTask.date_due < end_date
     ).all()
     
     task_counts = {}
@@ -528,14 +528,14 @@ def calendar_day(date_str):
         func.sum(TaskProgressEntry.points_completed).label('total_done')
     ).group_by(TaskProgressEntry.task_id).subquery()
     
-    tasks = UsersTaskUnencrypted.query.outerjoin(
-        progress_subquery, UsersTaskUnencrypted.id == progress_subquery.c.task_id
+    tasks = UsersTask.query.outerjoin(
+        progress_subquery, UsersTask.id == progress_subquery.c.task_id
     ).filter(
-        UsersTaskUnencrypted.user_id == current_user.id,
-        UsersTaskUnencrypted.is_hidden == False,
-        UsersTaskUnencrypted.date_deleted == None,
-        UsersTaskUnencrypted.date_due >= target_date,
-        UsersTaskUnencrypted.date_due < next_day
+        UsersTask.user_id == current_user.id,
+        UsersTask.is_hidden == False,
+        UsersTask.date_deleted == None,
+        UsersTask.date_due >= target_date,
+        UsersTask.date_due < next_day
     ).all()
     
     # Calculating progress for each task object to avoid template errors
@@ -548,11 +548,11 @@ def calendar_day(date_str):
 @login_required
 @onboarding_required
 def search_page():
-    tasks = UsersTaskUnencrypted.query.filter_by(
+    tasks = UsersTask.query.filter_by(
         user_id=current_user.id,
         is_hidden=False,
         date_deleted=None
-    ).order_by(UsersTaskUnencrypted.date_due.desc()).all()
+    ).order_by(UsersTask.date_due.desc()).all()
     return render_template('search.html', tasks=tasks, title="Search Tasks")
 
 @app.route('/logout')

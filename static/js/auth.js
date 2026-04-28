@@ -1,33 +1,27 @@
+// --- UI Helpers ---
+
 /**
  * Update the status feedback area with a decaying message.
- * Targets 'flash-container' from base.html
  */
 const setStatus = (msg, isError = false) => {
     const container = document.getElementById('flash-container');
     if (container) {
         const category = isError ? 'danger' : 'info';
-        // Build Bootstrap-compatible HTML
         const alertHtml = `
             <div class="alert alert-${category} alert-dismissible fade show" role="alert">
                 ${msg}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>`;
-        
-        // Append to container
         const div = document.createElement('div');
         div.innerHTML = alertHtml;
         const alertElement = div.firstElementChild;
         container.appendChild(alertElement);
 
-        // Decay logic: Start removal after 7 seconds
         setTimeout(() => {
             if (typeof bootstrap !== 'undefined' && bootstrap.Alert) {
-                const bsAlert = new bootstrap.Alert(alertElement);
-                bsAlert.close();
+                new bootstrap.Alert(alertElement).close();
             } else {
-                // Fallback if Bootstrap JS isn't loaded
-                alertElement.classList.remove('show');
-                setTimeout(() => alertElement.remove(), 150);
+                alertElement.remove();
             }
         }, 7000);
     }
@@ -54,26 +48,89 @@ function bufferEncode(value) {
         .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
-// --- Registration Logic ---
+// --- Crypto Core ---
+
+/**
+ * Retrieves and imports the E2E key from sessionStorage.
+ */
+async function getCryptoKey() {
+    const hexKey = sessionStorage.getItem("e2e_key");
+    if (!hexKey) return null;
+    const keyBytes = new Uint8Array(hexKey.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+    return await window.crypto.subtle.importKey(
+        "raw", 
+        keyBytes, 
+        { name: "AES-GCM" }, 
+        false, 
+        ["encrypt", "decrypt"]
+    );
+}
+
+/**
+ * Encrypts a string using AES-GCM and prepends the 12-byte IV.
+ */
+async function encryptWithSessionKey(plainText) {
+    try {
+        const cryptoKey = await getCryptoKey();
+        if (!cryptoKey) return null;
+        
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+        const encodedText = new TextEncoder().encode(plainText);
+        
+        const ciphertext = await window.crypto.subtle.encrypt(
+            { name: "AES-GCM", iv: iv }, 
+            cryptoKey, 
+            encodedText
+        );
+        
+        const combined = new Uint8Array(iv.length + ciphertext.byteLength);
+        combined.set(iv);
+        combined.set(new Uint8Array(ciphertext), iv.length);
+        
+        return btoa(String.fromCharCode(...combined));
+    } catch (err) { 
+        console.error("Encryption Error:", err); 
+        return null; 
+    }
+}
+
+/**
+ * Decrypts a Base64 string (IV + Ciphertext) using AES-GCM.
+ */
+async function decryptWithSessionKey(base64Data) {
+    try {
+        const cryptoKey = await getCryptoKey();
+        if (!cryptoKey) return null;
+
+        const combined = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+        const iv = combined.slice(0, 12);
+        const ciphertext = combined.slice(12);
+
+        const decrypted = await window.crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: iv },
+            cryptoKey,
+            ciphertext
+        );
+
+        return new TextDecoder().decode(decrypted);
+    } catch (err) {
+        console.error("Decryption failed:", err);
+        return null;
+    }
+}
+
+// --- Registration/Auth Logic ---
 
 async function registerDevice() {
     const regBtn = document.getElementById('reg-btn');
-    logDebug("Generating registration options...");
-    setStatus("Contacting server...");
     if (regBtn) regBtn.disabled = true;
-
     try {
-        const resp = await fetch('/generate-register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
+        const resp = await fetch('/generate-register', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
         const options = await resp.json();
         options.challenge = bufferDecode(options.challenge);
         options.user.id = bufferDecode(options.user.id);
         
         const cred = await navigator.credentials.create({ publicKey: options });
-        setStatus("Verifying with server...");
-
         const verifyResp = await fetch('/verify-register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -87,65 +144,36 @@ async function registerDevice() {
                 }
             })
         });
-
-        if(verifyResp.ok) {
-            window.location.href = "/login";
-        } else {
-            const errorData = await verifyResp.json();
-            throw new Error(errorData.error || "Server rejected credential");
-        }
+        if(verifyResp.ok) window.location.href = "/login";
     } catch (err) {
-        logDebug(err.message, true);
         setStatus(err.message, true);
         if (regBtn) regBtn.disabled = false;
     }
 }
 
-// --- Authentication Logic ---
-
 async function authenticateDevice() {
     const authBtn = document.getElementById('auth-btn');
-    logDebug("Requesting options...");
     if (authBtn) authBtn.disabled = true;
-
     try {
-        const resp = await fetch('/generate-auth', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
-        if(!resp.ok) {
-            const err = await resp.json();
-            throw new Error(err.error || "Server Error");
-        }
-
+        const resp = await fetch('/generate-auth', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
         const data = await resp.json();
         const options = JSON.parse(data.options);
-        const allSalts = data.salts;
-
-        options.challenge = bufferDecode(options.challenge);
         
-        if(options.allowCredentials) {
-            options.allowCredentials.forEach(c => c.id = bufferDecode(c.id));
-        }
+        options.challenge = bufferDecode(options.challenge);
+        if(options.allowCredentials) options.allowCredentials.forEach(c => c.id = bufferDecode(c.id));
 
         const firstCredId = data.options.allowCredentials?.[0]?.id;
-        const specificSalt = allSalts[firstCredId] || Object.values(allSalts)[0];
+        const specificSalt = data.salts[firstCredId] || Object.values(data.salts)[0];
 
-        options.extensions = {
-            prf: {
-                eval: {
-                    first: bufferDecode(specificSalt) 
-                }
-            }
-        };
+        options.extensions = { prf: { eval: { first: bufferDecode(specificSalt) } } };
 
         const assertion = await navigator.credentials.get({ publicKey: options });
-        
         const extensions = assertion.getClientExtensionResults();
+
         if (extensions.prf?.results?.first) {
             const keyBytes = new Uint8Array(extensions.prf.results.first);
-            const e2eKeyHex = Array.from(keyBytes).map(b => b.toString(16).padStart(2, '0')).join('');
-            sessionStorage.setItem("e2e_key", e2eKeyHex);
+            const hexKey = Array.from(keyBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+            sessionStorage.setItem("e2e_key", hexKey);
         }
 
         const verifyResp = await fetch('/verify-auth', {
@@ -158,51 +186,134 @@ async function authenticateDevice() {
                 response: {
                     clientDataJSON: bufferEncode(assertion.response.clientDataJSON),
                     authenticatorData: bufferEncode(assertion.response.authenticatorData),
-                    signature: bufferEncode(assertion.response.signature),
-                    userHandle: assertion.response.userHandle ? bufferEncode(assertion.response.userHandle) : null
+                    signature: bufferEncode(assertion.response.signature)
                 }
             })
         });
         const result = await verifyResp.json();
-        if(verifyResp.ok) {
-            window.location.href = result.redirect;
-        } else {
-            throw new Error(result.error || "Verification failed");
-        } 
+        if(verifyResp.ok) window.location.href = result.redirect;
     } catch (err) {
-        console.error("Login Error:", err);
-        logDebug(err.message, true);
+        setStatus(err.message, true);
         if (authBtn) authBtn.disabled = false;
     }
 }
-
-
-// --- Initialization ---
+// ... (Keep your existing UI Helpers, WebAuthn Helpers, and Crypto Core functions) ...
 
 document.addEventListener("DOMContentLoaded", () => {
     const regBtn = document.getElementById('reg-btn');
     const authBtn = document.getElementById('auth-btn');
-    const adminKeyDisplay = document.getElementById("e2e-key-display");
-    
+    const taskForm = document.getElementById('task-form');
+
     if (regBtn) regBtn.addEventListener('click', registerDevice);
     if (authBtn) authBtn.addEventListener('click', authenticateDevice);
-    
-    if (adminKeyDisplay) {
-        const storedKey = sessionStorage.getItem("e2e_key");
-        adminKeyDisplay.innerText = storedKey || "Key will appear here after a successful passkey login.";
-    }
-    
-    // Auto-decay for existing Flask flash messages on page load
-    const existingAlerts = document.querySelectorAll('#flash-container .alert');
-    existingAlerts.forEach(alert => {
-        setTimeout(() => {
-            if (typeof bootstrap !== 'undefined' && bootstrap.Alert) {
-                const bsAlert = new bootstrap.Alert(alert);
-                bsAlert.close();
-            } else {
-                alert.remove();
+
+    // --- FIXED: Form Interceptor with Submission Lock ---
+    if (taskForm) {
+        let isProcessing = false; // Prevents the form from submitting twice
+
+        taskForm.addEventListener('submit', async (e) => {
+            // If we are already encrypting, let the second submission through
+            if (isProcessing) return; 
+
+            // 1. Stop the initial plain-text submission
+            e.preventDefault(); 
+            
+            const labelInput = document.getElementById('label');
+            const commentInput = document.getElementById('comment');
+            const submitBtn = taskForm.querySelector('button[type="submit"]');
+
+            // Visual feedback: Disable button while encrypting
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerText = "Encrypting...";
             }
-        }, 7000);
-    });
+
+            // 2. Perform encryption
+            console.log("Encrypting task data...");
+            const encryptedLabel = await encryptWithSessionKey(labelInput.value);
+            const encryptedComment = await encryptWithSessionKey(commentInput.value || "");
+
+            if (encryptedLabel) {
+                // 3. Overwrite inputs with encrypted strings
+                labelInput.value = encryptedLabel;
+                commentInput.value = encryptedComment;
+
+                // 4. Set flag and submit manually
+                isProcessing = true; 
+                console.log("Encryption complete. Submitting to server.");
+                taskForm.submit(); 
+            } else {
+                // Reset UI on failure
+                isProcessing = false;
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = "Create Task";
+                }
+                setStatus("E2E Key missing. Please log in with your Passkey first.", true);
+            }
+        });
+    }
+
+    // Toolbox Decryption (Helper for verifying it worked)
+    const decryptBtn = document.getElementById('decrypt-btn');
+    if (decryptBtn) {
+        decryptBtn.addEventListener('click', async () => {
+            const input = document.getElementById('decrypt-input');
+            const output = document.getElementById('decrypt-output');
+            const area = document.getElementById('decryption-result-area');
+            const decrypted = await decryptWithSessionKey(input.value.trim());
+            if (decrypted) {
+                output.innerText = decrypted;
+                area.style.display = 'block';
+            } else {
+                setStatus("Decryption failed. Ensure the input is valid Base64.", true);
+            }
+        });
+    }
 });
 
+/**
+ * Automatically finds all elements with class 'encrypt-me', 
+ * decrypts their content, and updates the UI.
+ */
+/**
+ * Automatically decrypts all elements with 'decrypt-me' class.
+ */
+async function decryptPageContent() {
+    const elements = document.querySelectorAll('.decrypt-me');
+    if (elements.length === 0) return;
+
+    const cryptoKey = await getCryptoKey();
+    
+    // If no key, show locked state
+    if (!cryptoKey) {
+        elements.forEach(el => {
+            el.innerText = "🔒 Locked (Login required)";
+            el.classList.remove('is-decrypting');
+        });
+        return;
+    }
+
+    // Process all labels in parallel for speed
+    await Promise.all(Array.from(elements).map(async (el) => {
+        const ciphertext = el.innerText.trim();
+        
+        // Only attempt if it looks like actual encrypted data (Base64)
+        if (ciphertext.length > 20) {
+            const decrypted = await decryptWithSessionKey(ciphertext);
+            if (decrypted) {
+                el.innerText = decrypted;
+            } else {
+                el.innerText = "❌ Decryption Error";
+            }
+        }
+        // Fade in the text
+        el.classList.remove('is-decrypting');
+        el.style.opacity = "1";
+    }));
+}
+
+// Ensure this runs on every page load
+document.addEventListener("DOMContentLoaded", () => {
+    decryptPageContent();
+});

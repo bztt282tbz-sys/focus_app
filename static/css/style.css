@@ -237,3 +237,9 @@ main.container {
 
 .transition-all { transition: all 0.2s ease-in-out; }
 .transition-all:hover { opacity: 1 !important; color: #fff !important; transform: translateX(-2px); }
+
+.decrypt-me {
+    /* Prevents the gibberish from showing briefly */
+    display: inline-block;
+    min-width: 50px;
+}

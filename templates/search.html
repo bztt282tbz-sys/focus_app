@@ -10,10 +10,11 @@
 
         <div id="resultsList">
             {% for task in tasks %}
-            <div class="feature-item mb-3 task-node" data-label="{{ task.label|lower }}">
+            {# Remove data-label here because we will search the actual visible text #}
+            <div class="feature-item mb-3 task-node">
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">
-                        <a href="{{ url_for('view_task', task_id=task.id) }}" class="text-white text-decoration-none">
+                        <a href="{{ url_for('view_task', task_id=task.id) }}" class="text-white text-decoration-none decrypt-me is-decrypting">
                             {{ task.label }}
                         </a>
                     </h5>
@@ -25,18 +26,29 @@
     </div>
 </div>
 <script nonce="{{ csp_nonce() }}">
-    document.getElementById('taskSearch').addEventListener('input', function(e) {
-    const term = e.target.value.toLowerCase();
-    const tasks = document.querySelectorAll('.task-node');
-    
-    tasks.forEach(task => {
-        const label = task.getAttribute('data-label');
-        if (label.includes(term)) {
-            task.style.display = 'block';
-        } else {
-            task.style.display = 'none';
-        }
+    // 1. Run the decryption first
+    // This assumes your decryptPageContent() function is globally available in script.js
+    document.addEventListener("DOMContentLoaded", async () => {
+        await decryptPageContent(); 
+        console.log("Search ready: Data decrypted.");
     });
-});
+
+    // 2. Updated Search Logic
+    document.getElementById('taskSearch').addEventListener('input', function(e) {
+        const term = e.target.value.toLowerCase();
+        const taskNodes = document.querySelectorAll('.task-node');
+        
+        taskNodes.forEach(node => {
+            // Find the decrypted link inside the node
+            const labelElement = node.querySelector('.decrypt-me');
+            const readableText = labelElement ? labelElement.innerText.toLowerCase() : "";
+            
+            if (readableText.includes(term)) {
+                node.style.display = 'block';
+            } else {
+                node.style.display = 'none';
+            }
+        });
+    });
 </script>
 {% endblock %}
