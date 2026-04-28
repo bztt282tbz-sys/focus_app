@@ -1,6 +1,36 @@
+/**
+ * Update the status feedback area with a decaying message.
+ * Targets 'flash-container' from base.html
+ */
 const setStatus = (msg, isError = false) => {
-    const feedback = document.getElementById('status-feedback');
-    if (feedback) feedback.innerHTML = `<div class="alert alert-${isError ? 'danger' : 'info'}">${msg}</div>`;
+    const container = document.getElementById('flash-container');
+    if (container) {
+        const category = isError ? 'danger' : 'info';
+        // Build Bootstrap-compatible HTML
+        const alertHtml = `
+            <div class="alert alert-${category} alert-dismissible fade show" role="alert">
+                ${msg}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>`;
+        
+        // Append to container
+        const div = document.createElement('div');
+        div.innerHTML = alertHtml;
+        const alertElement = div.firstElementChild;
+        container.appendChild(alertElement);
+
+        // Decay logic: Start removal after 7 seconds
+        setTimeout(() => {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Alert) {
+                const bsAlert = new bootstrap.Alert(alertElement);
+                bsAlert.close();
+            } else {
+                // Fallback if Bootstrap JS isn't loaded
+                alertElement.classList.remove('show');
+                setTimeout(() => alertElement.remove(), 150);
+            }
+        }, 7000);
+    }
 };
 
 const logDebug = (msg, isError = false) => {
@@ -13,6 +43,8 @@ const logDebug = (msg, isError = false) => {
     }
 };
 
+// --- WebAuthn Helpers ---
+
 function bufferDecode(value) {
     return Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
 }
@@ -22,11 +54,13 @@ function bufferEncode(value) {
         .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
+// --- Registration Logic ---
+
 async function registerDevice() {
     const regBtn = document.getElementById('reg-btn');
     logDebug("Generating registration options...");
     setStatus("Contacting server...");
-    regBtn.disabled = true;
+    if (regBtn) regBtn.disabled = true;
 
     try {
         const resp = await fetch('/generate-register', {
@@ -63,14 +97,16 @@ async function registerDevice() {
     } catch (err) {
         logDebug(err.message, true);
         setStatus(err.message, true);
-        regBtn.disabled = false;
+        if (regBtn) regBtn.disabled = false;
     }
 }
+
+// --- Authentication Logic ---
 
 async function authenticateDevice() {
     const authBtn = document.getElementById('auth-btn');
     logDebug("Requesting options...");
-    authBtn.disabled = true;
+    if (authBtn) authBtn.disabled = true;
 
     try {
         const resp = await fetch('/generate-auth', {
@@ -84,7 +120,7 @@ async function authenticateDevice() {
 
         const data = await resp.json();
         const options = JSON.parse(data.options);
-        const allSalts = data.salts; // This is an object of {credentialId: salt}
+        const allSalts = data.salts;
 
         options.challenge = bufferDecode(options.challenge);
         
@@ -92,17 +128,13 @@ async function authenticateDevice() {
             options.allowCredentials.forEach(c => c.id = bufferDecode(c.id));
         }
 
-        // IMPORTANT: The PRF extension must match the expected API structure
-        // Since we don't know which credential the user will pick yet, 
-        // we often provide a generic salt or map it. 
-        // For a single-user-per-device flow:
         const firstCredId = data.options.allowCredentials?.[0]?.id;
         const specificSalt = allSalts[firstCredId] || Object.values(allSalts)[0];
 
         options.extensions = {
             prf: {
                 eval: {
-                    first: bufferDecode(specificSalt) // Must be 32 bytes
+                    first: bufferDecode(specificSalt) 
                 }
             }
         };
@@ -140,9 +172,11 @@ async function authenticateDevice() {
     } catch (err) {
         console.error("Login Error:", err);
         logDebug(err.message, true);
-        authBtn.disabled = false;
+        if (authBtn) authBtn.disabled = false;
     }
 }
+
+// --- Initialization ---
 
 document.addEventListener("DOMContentLoaded", () => {
     const regBtn = document.getElementById('reg-btn');
@@ -156,7 +190,17 @@ document.addEventListener("DOMContentLoaded", () => {
         const storedKey = sessionStorage.getItem("e2e_key");
         adminKeyDisplay.innerText = storedKey || "Key will appear here after a successful passkey login.";
     }
+
+    // Auto-decay for existing Flask flash messages on page load
+    const existingAlerts = document.querySelectorAll('#flash-container .alert');
+    existingAlerts.forEach(alert => {
+        setTimeout(() => {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Alert) {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            } else {
+                alert.remove();
+            }
+        }, 7000);
+    });
 });
-
-
-

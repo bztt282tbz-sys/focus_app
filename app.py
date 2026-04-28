@@ -2,11 +2,12 @@ import os
 import json
 import base64
 from flask import Flask, render_template, redirect, url_for, flash, request, jsonify, session, abort
-from datetime import datetime
+from datetime import datetime, timezone
 from flask_limiter import Limiter
 from flask_talisman import Talisman
 from flask_limiter.util import get_remote_address
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import func, or_
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from dotenv import load_dotenv
 from functools import wraps
@@ -28,6 +29,7 @@ from webauthn.helpers.structs import (
 load_dotenv()
 
 app = Flask(__name__)
+date = datetime.now(timezone.utc)
 
 # --- CONFIGURATION ---
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
@@ -118,6 +120,16 @@ class UsersTaskUnencrypted(db.Model):
     date_deleted = db.Column(db.DateTime, nullable=True)
     author = db.relationship('User', backref=db.backref('tasks', lazy=True))
     progress_entries = db.relationship('TaskProgressEntry', backref='task', lazy=True, cascade="all, delete-orphan")
+    @property
+    def progress(self):
+        if self.complexity <= 0: return 100
+        # Sum all related progress entries
+        done = sum(entry.points_completed for entry in self.progress_entries)
+        return min(int((done / self.complexity) * 100), 100)
+
+    @property
+    def completed(self):
+        return self.progress >= 100
     
 class TaskProgressEntry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -324,6 +336,18 @@ def log_task_progress(task_id):
         
     return redirect(url_for('view_task', task_id=task.id))
 
+@app.route('/admin/user/<int:user_id>')
+@login_required
+@admin_required
+def view_user_detail(user_id):
+    user = User.query.get_or_404(user_id)
+    # We can also fetch their task count or last activity here
+    task_stats = {
+        "total": UsersTaskUnencrypted.query.filter_by(user_id=user.id).count(),
+        "active": UsersTaskUnencrypted.query.filter_by(user_id=user.id, is_hidden=False).count()
+    }
+    return render_template('user_detail.html', user=user, stats=task_stats, title=f"Manage {user.username}")
+
 @app.route('/admin/toggle_setting/<string:setting_key>', methods=['POST'])
 @login_required
 @onboarding_required
@@ -404,17 +428,48 @@ def login():
     return render_template('login.html')
 
 @app.route('/dashboard')
-@limiter.limit("5 per second")
 @login_required
 @onboarding_required
 def dashboard():
-    tasks = UsersTaskUnencrypted.query.filter_by(
-        user_id=current_user.id,
-        is_hidden=False,
-        date_deletion_requested=None,
-        date_deleted=None
-    ).order_by(UsersTaskUnencrypted.importance.desc(), UsersTaskUnencrypted.date_due.asc()).all()
-    return render_template('dashboard.html', tasks=tasks, task_count=len(tasks))
+    # 1. Subquery to calculate current progress for all tasks
+    progress_subquery = db.session.query(
+        TaskProgressEntry.task_id,
+        func.sum(TaskProgressEntry.points_completed).label('total_done')
+    ).group_by(TaskProgressEntry.task_id).subquery()
+
+    # 2. Base query for this user's tasks
+    base_query = UsersTaskUnencrypted.query.outerjoin(
+        progress_subquery, UsersTaskUnencrypted.id == progress_subquery.c.task_id
+    ).filter(
+        UsersTaskUnencrypted.user_id == current_user.id,
+        UsersTaskUnencrypted.is_hidden == False,
+        UsersTaskUnencrypted.date_deleted == None
+    )
+
+    # FIX: Get current UTC time and strip the time components for a "today" comparison
+    # Use datetime.now(timezone.utc) instead of datetime.utcnow()
+    now_utc = datetime.now(timezone.utc)
+    today_dt = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    # 3. Filter for Focus List
+    focus_tasks = base_query.filter(
+        func.coalesce(progress_subquery.c.total_done, 0) < UsersTaskUnencrypted.complexity,
+        (UsersTaskUnencrypted.date_due == None) | (UsersTaskUnencrypted.date_due >= today_dt)
+    ).order_by(UsersTaskUnencrypted.importance.desc()).all()
+
+    # 4. Filter for Past/Completed List
+    past_tasks = base_query.filter(
+        (func.coalesce(progress_subquery.c.total_done, 0) >= UsersTaskUnencrypted.complexity) |
+        (UsersTaskUnencrypted.date_due < today_dt)
+    ).all()
+
+    return render_template(
+        'dashboard.html',
+        tasks=focus_tasks,
+        past_tasks=past_tasks,
+        task_count=len(focus_tasks),
+        today=now_utc.date()
+    )
 
 @app.route('/logout')
 @login_required

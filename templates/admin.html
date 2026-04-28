@@ -1,80 +1,82 @@
 {% extends "base.html" %}
 {% block content %}
+{% if current_user.is_admin %}
 <div class="content-body text-start" style="width: 60rem; max-width: 90%;">
-    <div class="feature-item mb-4" style="max-height: fit-content; padding-bottom: 4px;">
-        <h5 class="text-white mb-3" style="max-width: fit-content;">Interface Legend</h5>
-    </div>
-    <div class="feature-item mb-4">
-        <div class="row align-items-center">
-            <div class="col-12 col-md-8 mb-3 mb-md-0">
-                <h5 class="text-white mb-1">Optimal Condition: </h5>
-                <p class="small text-success fw-bold mb-0">
-                    Status: Enabled
-                </p>
+    <div class="mb-4">
+        <button class="btn btn-outline-light w-100 text-start d-flex justify-content-between align-items-center py-3 px-4 mb-3" 
+                type="button" data-bs-toggle="collapse" data-bs-target="#settingsCollapse">
+            <h5 class="mb-0">Admin Settings</h5>
+            <span>▼</span>
+        </button>
+        
+        <div class="collapse" id="settingsCollapse">
+            {% for setting in settings %}
+            <div class="feature-item mb-4">
+                <div class="row align-items-center g-3">
+                    <div class="col-12 col-md"> 
+                        <div class="d-flex align-items-center">
+                            <span class="h5 text-white mb-1 me-2">{{ setting.label }}</span> <span class="badge text-bg-warning small mb-1">{{ 'INOP' if not setting.implemented }}</span>
+                        </div>
+                        <p class="small {{ 'text-success' if setting.value == setting.expected_value else 'text-warning' }} fw-bold mb-0">
+                            Status: {{ 'Enabled' if setting.value else 'Disabled' }}
+                        </p>
+                    </div>
+                    
+                    <div class="col-12 col-md-auto text-md-end"> 
+                        <form action="{{ url_for('toggle_setting', setting_key=setting.key) }}" method="POST" class="m-0">
+                            <button type="submit" class="btn btn-sm admin-panel-btn {{ 'btn-outline-success' if setting.value == setting.expected_value else 'btn-outline-warning' }}" 
+                                    {{ 'disabled' if not setting.implemented }}>
+                                {{ 'Disable' if setting.value else 'Enable' }}
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
-            
-            <div class="col-12 col-md-4">
-                <form action="" method="POST" class="w-100">
-                    <button type="submit" 
-                            class="btn btn-sm btn-outline-info admin-panel-btn btn-outline-info" disabled>
-                        Disable
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-    <div class="feature-item mb-4">
-        <div class="row align-items-center">
-            <div class="col-12 col-md-8 mb-3 mb-md-0">
-                <h5 class="text-white mb-1">Attention Required: </h5>
-                <p class="small text-warning fw-bold mb-0">
-                    Status: Enabled
-                </p>
-            </div>
-            
-            <div class="col-12 col-md-4">
-                <form action="" method="POST" class="w-100">
-                    <button type="submit" 
-                            class="btn btn-sm btn-outline-info admin-panel-btn btn-outline-info" disabled>
-                        Disable
-                    </button>
-                </form>
-            </div>
+            {% endfor %}
         </div>
     </div>
 
-    <hr class="my-4 border-light opacity-25">
-    <div class="feature-item mb-4" style="max-height: fit-content; padding-bottom: 4px;">
-        <h5 class="text-white mb-3" style="max-width: fit-content;">Admin Settings</h5>
-    </div>
+    <div class="mb-4">
+        <button class="btn btn-outline-light w-100 text-start d-flex justify-content-between align-items-center py-3 px-4 mb-3" 
+                type="button" data-bs-toggle="collapse" data-bs-target="#usersCollapse">
+            <h5 class="mb-0">Registered Users</h5>
+            <span>▼</span>
+        </button>
 
-    {% for setting in settings %}
-    <div class="feature-item mb-4">
-        <div class="row align-items-center">
-            <div class="col-12 col-md-8 mb-3 mb-md-0">
-                <h5 class="text-white mb-1">{{ setting.label }}</h5>
-                <p class="small {{ 'text-success' if setting.value == setting.expected_value else 'text-warning' }} fw-bold mb-0">
-                    Status: {{ 'Enabled' if setting.value else 'Disabled' }}
-                    <span class="badge text-bg-warning">{{ 'INOP' if not setting.implemented }}</span>
-                </p>
+        <div class="collapse" id="usersCollapse">
+            {% for user in users %}
+            <div class="feature-item mb-4">
+                <div class="row align-items-center g-3">
+                    <div class="col-12 col-md">
+                        <div class="d-flex align-items-center">
+                            <span class="h5 text-white mb-1 me-2">{{ user.username or "Anonymous" }}</span> <span class="badge text-bg-info small mb-1">{{ 'ADMIN' if user.is_admin }}</span>
+                        </div>
+                        <p class="small {{ 'text-success' if user.is_active else 'text-danger' }} fw-bold mb-0">
+                            Status: {{ 'Active' if user.is_active else 'Locked' }} 
+                            <span class="text-secondary ms-2 opacity-75">| {{ user.security_preference }}</span>
+                        </p>
+                    </div>
+                    
+                    <div class="col-12 col-md-auto text-md-end">
+                        <a href="{{ url_for('view_user_detail', user_id=user.id) }}" 
+                        class="btn btn-sm btn-outline-secondary admin-panel-btn">
+                            Manage
+                        </a>
+                    </div>
+                </div>
             </div>
-            
-            <div class="col-12 col-md-4"> 
-                <form action="{{ url_for('toggle_setting', setting_key=setting.key) }}" method="POST" class="w-100">
-                    <button type="submit" 
-                            class="btn btn-sm admin-panel-btn {{ 'btn-outline-info' if setting.value else 'btn-outline-success' }}" 
-                            {{ 'disabled' if not setting.implemented }}>
-                        {{ 'Disable' if setting.value else 'Enable' }}
-                    </button>
-                </form>
-            </div>
+            {% endfor %}
         </div>
     </div>
-    {% endfor %}
+    <div>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-light">Back to Dashboard</a>
+    </div>
 </div>
-
-<div class="actions mt-5">
-    <a href="{{ url_for('index') }}" class="btn btn-lg btn-outline-light fw-bold">Back to Home</a>
-</div>
+{% else %}
+    <div class="alert alert-danger">
+        <h1>403 - Access Denied</h1>
+        <p>You do not have the required permissions to view this page.</p>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-primary">Return to Dashboard</a>
+    </div>
+{% endif %}
 {% endblock %}
-

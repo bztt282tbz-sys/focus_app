@@ -1,8 +1,18 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="centered-content py-4">
-    <div class="card bg-dark text-white border-secondary mx-auto w-100" style="max-width: 600px;">
+<div class="centered-content py-0 mt-0">
+    <div class="mx-auto w-100 mb-3 text-start" style="max-width: 600px;">
+        <a href="/dashboard" class="text-decoration-none text-muted d-inline-flex align-items-center small fw-medium transition-all" style="opacity: 0.8;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-left me-1" viewBox="0 0 16 16">
+              <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
+            </svg>
+            Dashboard
+        </a>
+    </div>
+    <div class="card bg-dark text-white border-secondary mx-auto w-100 mb-5" style="max-width: 600px;">
         <div class="card-body p-4">
+            
+
             <div class="d-flex justify-content-between align-items-start mb-4">
                 <h2 class="card-title mb-0">{{ task.label }}</h2>
                 {% if task.importance >= 4 %}
@@ -20,10 +30,13 @@
             </div>
 
             <div class="row g-3 mb-4 text-start">
+                {% set complexity_labels = {1: 'Trivial', 2: 'Easy', 3: 'Moderate', 4: 'Hard', 5: 'Complex'} %}
                 <div class="col-6">
                     <div class="p-3 border border-secondary rounded bg-dark">
                         <label class="text-muted small text-uppercase d-block mb-1">Complexity</label>
-                        <h4 class="mb-0 text-white">{{ task.complexity }} Pts</h4>
+                        <h4 class="mb-0 text-white">
+                            {{ task.complexity }} - {{ complexity_labels[task.complexity] }}
+                        </h4>
                     </div>
                 </div>
                 <div class="col-6">
@@ -41,7 +54,7 @@
                 </div>
                 <div class="progress bg-secondary" style="height: 8px; background-color: rgba(255,255,255,0.1) !important;">
                     <div class="progress-bar bg-info" role="progressbar" 
-                         style="width: {{ (task.complexity - remaining_points) / task.complexity * 100 }} %;">
+                         style="width: {{ ((task.complexity - remaining_points) / task.complexity * 100) }}%;">
                     </div>
                 </div>
             </div>
