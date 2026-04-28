@@ -176,13 +176,14 @@ async function authenticateDevice() {
     }
 }
 
+
 // --- Initialization ---
 
 document.addEventListener("DOMContentLoaded", () => {
     const regBtn = document.getElementById('reg-btn');
     const authBtn = document.getElementById('auth-btn');
     const adminKeyDisplay = document.getElementById("e2e-key-display");
-
+    
     if (regBtn) regBtn.addEventListener('click', registerDevice);
     if (authBtn) authBtn.addEventListener('click', authenticateDevice);
     
@@ -190,7 +191,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const storedKey = sessionStorage.getItem("e2e_key");
         adminKeyDisplay.innerText = storedKey || "Key will appear here after a successful passkey login.";
     }
-
+    
     // Auto-decay for existing Flask flash messages on page load
     const existingAlerts = document.querySelectorAll('#flash-container .alert');
     existingAlerts.forEach(alert => {
@@ -204,3 +205,4 @@ document.addEventListener("DOMContentLoaded", () => {
         }, 7000);
     });
 });
+

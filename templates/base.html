@@ -27,6 +27,9 @@
                     <li class="nav-item">
                         <a class="nav-link {{ 'active' if request.endpoint == 'new_task' }}" href="{{ url_for('new_task') }}">+ New Task</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if request.endpoint == 'calendar_view' }}" href="{{ url_for('calendar_view') }}">Calendar</a>
+                    </li>
                     {% if current_user.is_admin %}
                         <li class="nav-item">
                             <a style="border: 1px; border-color: aqua;" class="nav-link {{ 'active' if request.endpoint == 'admin_dashboard' }}" href="{{ url_for('admin_dashboard') }}">Admin</a>

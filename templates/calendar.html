@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+    <div class="mx-auto" style="max-width: 800px;">
+        <div class="mb-5 border-bottom pb-4">
+            <a href="{{ url_for('search_page') }}" class="btn btn-outline-info w-100">Go to Task Search</a>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="text-white mb-0">{{ month_name }} {{ year }}</h3>
+            <div>
+                {% set prev_month = month - 1 if month > 1 else 12 %}
+                {% set prev_year = year if month > 1 else year - 1 %}
+                {% set next_month = month + 1 if month < 12 else 1 %}
+                {% set next_year = year if month < 12 else year + 1 %}
+                <a href="{{ url_for('calendar_view', year=prev_year, month=prev_month) }}" class="btn btn-sm btn-outline-light me-2">&lt; Prev</a>
+                <a href="{{ url_for('calendar_view', year=next_year, month=next_month) }}" class="btn btn-sm btn-outline-light">Next &gt;</a>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-dark table-bordered text-center border-secondary">
+                <thead>
+                    <tr>
+                        <th class="text-muted">Mon</th>
+                        <th class="text-muted">Tue</th>
+                        <th class="text-muted">Wed</th>
+                        <th class="text-muted">Thu</th>
+                        <th class="text-muted">Fri</th>
+                        <th class="text-muted">Sat</th>
+                        <th class="text-muted">Sun</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for week in cal %}
+                    <tr>
+                        {% for day in week %}
+                        <td style="height: 120px; width: 14%; vertical-align: top;" class="p-2 {% if day == 0 %}bg-dark opacity-50{% else %}bg-dark{% endif %} border-secondary">
+                            {% if day != 0 %}
+                                <div class="d-flex justify-content-start mb-2">
+                                    <span class="text-light fw-bold">{{ day }}</span>
+                                </div>
+                                {% if task_counts.get(day) %}
+                                    <a href="{{ url_for('calendar_day', date_str='%04d-%02d-%02d'|format(year, month, day)) }}" class="btn btn-sm btn-info w-100 p-1 text-dark fw-bold">
+                                        {{ task_counts.get(day) }} Task(s)
+                                    </a>
+                                {% else %}
+                                    <a href="{{ url_for('calendar_day', date_str='%04d-%02d-%02d'|format(year, month, day)) }}" class="d-block w-100 h-100 text-decoration-none text-muted small mt-3">
+                                        <span class="opacity-50">+ Add</span>
+                                    </a>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

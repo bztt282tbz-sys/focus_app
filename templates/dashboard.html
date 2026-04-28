@@ -34,7 +34,7 @@
                             </h5>
                             <span class="fw-bold text-info small">{{ task.progress }}%</span>
                         </div>
-                        
+                        {% set complexity_labels = {1: 'Trivial', 2: 'Easy', 3: 'Moderate', 4: 'Hard', 5: 'Complex'} %}
                         <div class="d-flex justify-content-between align-items-center mt-3">
                             <p class="text-light small mb-0">
                                 {% if task.date_due %}
@@ -43,7 +43,7 @@
                                     <span class="text-muted italic">No due date</span>
                                 {% endif %}
                                 <span class="ms-2">|</span>
-                                <span class="ms-2"> Complexity: {{ task.complexity }}/5</span>
+                                <span class="ms-2">{{ complexity_labels[task.complexity] }}</span>
                             </p>
                             {# Slightly wider progress track for better visual balance #}
                             <div class="progress" style="width: 120px; height: 4px; background-color: rgba(255,255,255,0.1);">
@@ -58,7 +58,6 @@
                 </div>
             {% endif %}
         </div>
-
         {# 2. Archive Section #}
         {% if past_tasks %}
             <div class="mx-auto mt-5" style="max-width: 800px;">

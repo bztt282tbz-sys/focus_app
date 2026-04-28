@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-5">
+    <div class="mx-auto text-start" style="max-width: 800px;">
+        <div class="mb-3">
+            <a href="{{ url_for('calendar_view') }}" class="text-decoration-none text-muted d-inline-flex align-items-center small fw-medium transition-all" style="opacity: 0.8;">
+                <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="16" height="16" fill="currentColor" class="bi bi-chevron-left me-1" viewBox="0 0 16 16">
+                  <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
+                </svg>
+                Back to Calendar
+            </a>
+        </div>
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="text-white mb-0">Tasks for {{ target_date.strftime('%B %d, %Y') }}</h3>
+            <a href="{{ url_for('new_task') }}" class="btn btn-sm custom-invert-btn px-3">+ Add Task</a>
+        </div>
+
+        {% if tasks %}
+            {% for task in tasks %}
+                <div class="feature-item mb-4 position-relative">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <h5 class="text-white mb-1">
+                            <a href="{{ url_for('view_task', task_id=task.id) }}" class="text-white text-decoration-none stretched-link">
+                                {{ task.label }} 📝
+                            </a>
+                        </h5>
+                        <span class="fw-bold text-info small">{{ task.progress }}%</span>
+                    </div>
+                    
+                    {% set complexity_labels = {1: 'Trivial', 2: 'Easy', 3: 'Moderate', 4: 'Hard', 5: 'Complex'} %}
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <p class="text-light small mb-0">
+                            <span class="text-light">Due: {{ task.date_due.strftime('%b %d %Y') }}</span>
+                            <span class="ms-2">|</span>
+                            <span class="ms-2">{{ complexity_labels[task.complexity] }}</span>
+                        </p>
+                        <div class="progress" style="width: 120px; height: 4px; background-color: rgba(255,255,255,0.1);">
+                            <div class="progress-bar bg-info" role="progressbar" style="width: {{ task.progress }}%"></div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="feature-item text-center p-5 opacity-75">
+                <p class="text-muted mb-0">No tasks due on this day. Time to relax or <a href="{{ url_for('new_task') }}" class="link-info">add more</a>?</p> 
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
