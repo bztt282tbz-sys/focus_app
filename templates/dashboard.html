@@ -26,7 +26,22 @@
                         </h5>
                         <span class="fw-bold text-info small">{{ task.progress }}%</span>
                     </div>
-                    {# ... Complexity/Progress UI ... #}
+                    {% set complexity_labels = {1: 'Trivial', 2: 'Easy', 3: 'Moderate', 4: 'Hard', 5: 'Complex'} %}
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <p class="text-light small mb-0">
+                                {% if task.date_due %}
+                                    <span class="text-light">Due: {{ task.date_due.strftime('%b %d %Y') }}</span>
+                                {% else %}
+                                    <span class="text-muted italic">No due date</span>
+                                {% endif %}
+                                <span class="ms-2">|</span>
+                                <span class="ms-2">{{ complexity_labels[task.complexity] }}</span>
+                            </p>
+                            {# Slightly wider progress track for better visual balance #}
+                            <div class="progress" style="width: 120px; height: 4px; background-color: rgba(255,255,255,0.1);">
+                                <div class="progress-bar bg-info" role="progressbar" style="width: {{ task.progress }}%"></div>
+                            </div>
+                        </div>
                 </div>
             {% endfor %}
         {% else %}
@@ -47,15 +62,33 @@
             <div class="collapse" id="pastTasksCollapse">
                 <div class="text-start pt-3">
                     {% for task in past_tasks %}
-                        <div class="feature-item mb-3 opacity-50 position-relative">
-                            <h5 class="mb-1">
-                                <a href="{{ url_for('view_task', task_id=task.id) }}" class="text-white text-decoration-none stretched-link">
-                                    <span class="decrypt-me is-decrypting {% if task.completed %}text-decoration-line-through text-muted{% endif %}">
-                                        {{ task.label }}
-                                    </span>
-                                </a>
-                            </h5>
+                        <div class="feature-item mb-4 position-relative">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <h5 class="text-white mb-1">
+                            <a href="{{ url_for('view_task', task_id=task.id) }}" class="text-white text-decoration-none stretched-link">
+                                {# Wrap only the label in the decrypt class #}
+                                <span class="decrypt-me is-decrypting">{{ task.label }}</span> 📝
+                            </a>
+                        </h5>
+                        <span class="fw-bold text-info small">{{ task.progress }}%</span>
+                    </div>
+                    {% set complexity_labels = {1: 'Trivial', 2: 'Easy', 3: 'Moderate', 4: 'Hard', 5: 'Complex'} %}
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <p class="text-light small mb-0">
+                                {% if task.date_due %}
+                                    <span class="text-light">Due: {{ task.date_due.strftime('%b %d %Y') }}</span>
+                                {% else %}
+                                    <span class="text-muted italic">No due date</span>
+                                {% endif %}
+                                <span class="ms-2">|</span>
+                                <span class="ms-2">{{ complexity_labels[task.complexity] }}</span>
+                            </p>
+                            {# Slightly wider progress track for better visual balance #}
+                            <div class="progress" style="width: 120px; height: 4px; background-color: rgba(255,255,255,0.1);">
+                                <div class="progress-bar bg-info" role="progressbar" style="width: {{ task.progress }}%"></div>
+                            </div>
                         </div>
+                </div>
                     {% endfor %}
                 </div>
             </div>
