@@ -1,39 +1,67 @@
 {% extends "base.html" %}
 {% block content %}
-<section>
-    <h2>Licenses</h2>
-    <div class="my-4 license">
-        <h4><a href="https://github.com/bztt282tbz-sys/focus_app" class="link-light" target="_blank">focus_app</a></h4>
-        <ul>
-            <li>Copyright 2026 Dennis Meide</li>
-            <li>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</li>
-            <li>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</li>
-            <li>THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</li>
-        </ul>
-    </div>
-    <div class="my-4 license">
-        <h4><a href="https://github.com/twbs/bootstrap" class="link-light" target="_blank">bootstrap</a></h4>
-        <ul>
-            <li>Cover template for <a href="https://getbootstrap.com/">Bootstrap</a>, by <a href="https://twitter.com/mdo">@mdo</a>.</li>
-            <li>legal/bootstrap.txt</li>
-            <li>Copyright (c) 2011-2025 The Bootstrap Authors</li>
-            <li>Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:</li>
-            <li>The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.</li>
-            <li>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.</li>
-        </ul>
-    </div>
-</section>
-{% endblock %}
 
+<style>
+    /* Keeps the legal text clean and distinct from your bio */
+    .license-block {
+        border-left: 2px solid rgba(255, 255, 255, 0.1);
+        padding-left: 1.5rem;
+    }
+    .legal-text {
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        font-size: 0.8rem;
+        line-height: 1.6;
+        color: rgba(255, 255, 255, 0.5); /* Dimmed so it's readable but not distracting */
+        text-align: justify;
+    }
+    .license-header {
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        font-weight: 700;
+    }
+</style>
+
+<div class="centered-content">
+    <h2 class="cover-heading mb-4">About & Legal</h2>
+    
+    <div class="content-body text-start">
+        <div class="feature-item mb-5">
+            <h5 class="text-white mb-2">👨‍💻 The Developer</h5>
+            <p class="text-light">
+                Thanks for using this product. Feel free to leave feedback!<br>Visit my <a href="https://github.com/bztt282tbz-sys/focus_app" class="link-light">repository</a>.
+            </p>
+        </div>
+
+        <hr class="my-5 opacity-10">
+
+        <h3 class="h5 text-white mb-4">Software Licenses</h3>
+        
+        <div class="license-block mb-5">
+            <div class="d-flex justify-content-between align-items-baseline mb-3">
+                <h6 class="license-header text-info mb-0">focus_app</h6>
+                <small class="text-muted">MIT License</small>
+            </div>
+            <p class="legal-text">
+                Copyright 2026 Dennis Meide<br><br>
+                Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:<br><br>
+                The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.<br><br>
+                THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+            </p>
+        </div>
+
+        <div class="license-block mb-5">
+            <div class="d-flex justify-content-between align-items-baseline mb-3">
+                <h6 class="license-header text-info mb-0">Bootstrap</h6>
+                <small class="text-muted">MIT License</small>
+            </div>
+            <p class="legal-text">
+                Copyright (c) 2011-2025 The Bootstrap Authors<br><br>
+                Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:<br><br>
+                The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.<br><br>
+                THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+            </p>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
