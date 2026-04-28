@@ -136,7 +136,7 @@ class TaskProgressEntry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     task_id = db.Column(db.Integer, db.ForeignKey('users_task.id'), nullable=False, index=True)
     points_completed = db.Column(db.Integer, nullable=False)
-    comment = db.Column(db.String(280), nullable=True) 
+    comment = db.Column(db.String(65536), nullable=True) 
     date_logged = db.Column(db.DateTime, default=db.func.now())
 
 def get_setting(key):

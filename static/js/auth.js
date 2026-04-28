@@ -50,75 +50,96 @@ function bufferEncode(value) {
 
 // --- Crypto Core ---
 
-/**
- * Retrieves and imports the E2E key from sessionStorage.
- */
+// --- Crypto Core ---
 async function getCryptoKey() {
     const hexKey = sessionStorage.getItem("e2e_key");
     if (!hexKey) return null;
     const keyBytes = new Uint8Array(hexKey.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
     return await window.crypto.subtle.importKey(
-        "raw", 
-        keyBytes, 
-        { name: "AES-GCM" }, 
-        false, 
-        ["encrypt", "decrypt"]
+        "raw", keyBytes, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]
     );
 }
 
-/**
- * Encrypts a string using AES-GCM and prepends the 12-byte IV.
- */
 async function encryptWithSessionKey(plainText) {
     try {
+        if (!plainText) return "";
         const cryptoKey = await getCryptoKey();
         if (!cryptoKey) return null;
-        
         const iv = window.crypto.getRandomValues(new Uint8Array(12));
         const encodedText = new TextEncoder().encode(plainText);
-        
-        const ciphertext = await window.crypto.subtle.encrypt(
-            { name: "AES-GCM", iv: iv }, 
-            cryptoKey, 
-            encodedText
-        );
-        
+        const ciphertext = await window.crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, cryptoKey, encodedText);
         const combined = new Uint8Array(iv.length + ciphertext.byteLength);
         combined.set(iv);
         combined.set(new Uint8Array(ciphertext), iv.length);
-        
         return btoa(String.fromCharCode(...combined));
-    } catch (err) { 
-        console.error("Encryption Error:", err); 
-        return null; 
-    }
+    } catch (err) { return null; }
 }
 
-/**
- * Decrypts a Base64 string (IV + Ciphertext) using AES-GCM.
- */
 async function decryptWithSessionKey(base64Data) {
     try {
         const cryptoKey = await getCryptoKey();
         if (!cryptoKey) return null;
-
         const combined = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
         const iv = combined.slice(0, 12);
         const ciphertext = combined.slice(12);
-
-        const decrypted = await window.crypto.subtle.decrypt(
-            { name: "AES-GCM", iv: iv },
-            cryptoKey,
-            ciphertext
-        );
-
+        const decrypted = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, cryptoKey, ciphertext);
         return new TextDecoder().decode(decrypted);
-    } catch (err) {
-        console.error("Decryption failed:", err);
-        return null;
+    } catch (err) { return null; }
+}
+
+// --- Batch Decryption ---
+async function decryptPageContent() {
+    const elements = document.querySelectorAll('.decrypt-me');
+    const cryptoKey = await getCryptoKey();
+    
+    for (const el of elements) {
+        const ciphertext = el.innerText.trim();
+        if (ciphertext.length > 20) { // Basic check for Base64 ciphertext
+            const decrypted = await decryptWithSessionKey(ciphertext);
+            if (decrypted) el.innerText = decrypted;
+        }
+        el.classList.remove('is-decrypting');
+        el.style.opacity = "1";
     }
 }
 
+// --- Global Initialization ---
+document.addEventListener("DOMContentLoaded", () => {
+    decryptPageContent();
+
+    // Intercept Create Task Form
+    const taskForm = document.getElementById('task-form');
+    if (taskForm) {
+        taskForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const labelInput = document.getElementById('label');
+            const commentInput = document.getElementById('comment');
+            
+            const encLabel = await encryptWithSessionKey(labelInput.value);
+            const encComment = await encryptWithSessionKey(commentInput.value);
+
+            if (encLabel !== null) {
+                labelInput.value = encLabel;
+                commentInput.value = encComment || "";
+                taskForm.submit();
+            }
+        });
+    }
+
+    // Intercept Progress Update Form
+    const progressForm = document.getElementById('progress-form');
+    if (progressForm) {
+        progressForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const noteInput = document.getElementById('update_comment');
+            if (noteInput && noteInput.value.trim() !== "") {
+                const encrypted = await encryptWithSessionKey(noteInput.value);
+                if (encrypted) noteInput.value = encrypted;
+            }
+            progressForm.submit();
+        });
+    }
+});
 // --- Registration/Auth Logic ---
 
 async function registerDevice() {
@@ -279,39 +300,41 @@ document.addEventListener("DOMContentLoaded", () => {
 /**
  * Automatically decrypts all elements with 'decrypt-me' class.
  */
+// --- Updated Batch Decryption ---
 async function decryptPageContent() {
     const elements = document.querySelectorAll('.decrypt-me');
-    if (elements.length === 0) return;
-
     const cryptoKey = await getCryptoKey();
     
-    // If no key, show locked state
+    // If no key is found, we just show the "Locked" state
     if (!cryptoKey) {
         elements.forEach(el => {
-            el.innerText = "🔒 Locked (Login required)";
+            // Only show locked if the content actually looks encrypted
+            if (el.innerText.trim().length > 20) {
+                el.innerText = "🔒 Locked";
+            }
             el.classList.remove('is-decrypting');
         });
         return;
     }
 
-    // Process all labels in parallel for speed
-    await Promise.all(Array.from(elements).map(async (el) => {
+    for (const el of elements) {
         const ciphertext = el.innerText.trim();
         
-        // Only attempt if it looks like actual encrypted data (Base64)
-        if (ciphertext.length > 20) {
+        // --- FIX: Only decrypt if it looks like a Base64 IV+Ciphertext block ---
+        // Plain text like "No description" will be ignored and remain visible
+        if (ciphertext && ciphertext.length > 20 && !ciphertext.includes(" ")) {
             const decrypted = await decryptWithSessionKey(ciphertext);
             if (decrypted) {
                 el.innerText = decrypted;
-            } else {
-                el.innerText = "❌ Decryption Error";
             }
         }
-        // Fade in the text
+        
+        // Finalize UI
         el.classList.remove('is-decrypting');
         el.style.opacity = "1";
-    }));
+    }
 }
+
 
 // Ensure this runs on every page load
 document.addEventListener("DOMContentLoaded", () => {

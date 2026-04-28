@@ -1,5 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
+<style>
+    /* Smoothly reveal text after decryption */
+    .decrypt-me.is-decrypting { opacity: 0; }
+    .decrypt-me { transition: opacity 0.3s ease-in; }
+</style>
+
 <div class="centered-content py-0 mt-0">
     <div class="mx-auto w-100 mb-3 text-start" style="max-width: 600px;">
         <a href="/dashboard" class="text-decoration-none text-muted d-inline-flex align-items-center small fw-medium transition-all" style="opacity: 0.8;">
@@ -9,28 +15,33 @@
             Dashboard
         </a>
     </div>
+
     <div class="card bg-dark text-white border-secondary mx-auto w-100 mb-5" style="max-width: 600px;">
         <div class="card-body p-4">
             
-
             <div class="d-flex justify-content-between align-items-start mb-4">
-                <h2 class="card-title mb-0 decrypt-me">{{ task.label }}</h2>
-                {% if task.importance >= 5 %}
-                    <span class="badge rounded-pill bg-danger">Critical</span>
-                {% if task.importance >= 4 %}
-                    <span class="badge rounded-pill bg-danger">High</span>
-                {% elif task.importance == 3 %}
-                    <span class="badge rounded-pill bg-warning text-dark">Medium</span>
-                {% elif task.importance == 2 %}
-                    <span class="badge rounded-pill bg-warning text-dark">Low</span>
-                {% else %}
-                    <span class="badge rounded-pill bg-secondary">Optional</span>
-                {% endif %}
+                {# Fixed missing quote in class attribute below #}
+                <h2 class="card-title mb-0 decrypt-me is-decrypting">{{ task.label }}</h2>
+                <div class="d-flex gap-1">
+                    {# Fixed the unclosed if/elif logic here #}
+                    {% if task.importance >= 4 %}
+                        <span class="badge rounded-pill bg-danger">Critical</span>
+                    {% elif task.importance == 3 %}
+                        <span class="badge rounded-pill bg-warning text-dark">Important</span>
+                    {% else %}
+                        <span class="badge rounded-pill bg-secondary">Routine</span>
+                    {% endif %}
+                </div>
             </div>
 
+            {# Task Details #}
             <div class="mb-4 text-start">
                 <label class="text-muted small text-uppercase fw-bold d-block mb-1">Details</label>
-                <p class="text-light fs-5 decrypt-me">{{ task.comment or 'No description provided.' }}</p>
+                {% if task.comment and task.comment.strip() %}
+                    <p class="text-light fs-5 decrypt-me is-decrypting">{{ task.comment }}</p>
+                {% else %}
+                    <p class="text-muted italic">No description provided.</p>
+                {% endif %}
             </div>
 
             <div class="row g-3 mb-4 text-start">
@@ -63,112 +74,114 @@
                 </div>
             </div>
 
-            <div class="row mb-4 text-start text-muted small">
-                <div class="col-6">
-                    <span>Start: {{ task.date_start.strftime('%Y-%m-%d') }}</span>
-                </div>
-                <div class="col-6 text-end">
-                    <span>Due: {{ task.date_due.strftime('%Y-%m-%d') if task.date_due else 'Flexible' }}</span>
-                </div>
-            </div>
-
             <hr class="border-secondary opacity-50 mb-4">
 
             <div class="progress-section">
-    {% if remaining_points > 0 %}
-    <form action="{{ url_for('log_task_progress', task_id=task.id) }}" method="POST" class="text-start">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <label class="form-label text-light mb-0">Log Progress</label>
-            <span class="badge bg-primary">+<span id="points-display">0</span> Point(s)</span>
-        </div>
-        
-        <div class="input-group mb-4">
-            <button class="btn btn-outline-secondary px-4" type="button" id="btn-minus">—</button>
-            <input type="number" 
-                   class="form-control bg-dark text-white border-secondary text-center fs-4 fw-bold" 
-                   id="points-input" 
-                   name="points" 
-                   value="0" 
-                   min="0" 
-                   max="{{ remaining_points }}" 
-                   readonly>
-            <button class="btn btn-outline-info px-4" type="button" id="btn-plus">+</button>
-        </div>
-        <div class="mb-3">
-            <label class="form-label text-muted small text-uppercase fw-bold">Update Note</label>
-            <textarea name="update_comment" class="form-control bg-dark text-white border-secondary" rows="2" placeholder="What did you work on?"></textarea>
-        </div>
-        
-        <button type="submit" id="submit-btn" class="btn btn-lg custom-invert-btn w-100 fw-bold" disabled>
-            Update Progress
-        </button>
-    </form>
-    {% else %}
-    <div class="p-3 border border-success rounded text-center">
-        <span class="text-success fw-bold">✓ Task Fully Completed</span>
-    </div>
-    {% endif %}
-    <hr class="border-secondary opacity-50 my-4">
+                {% if remaining_points > 0 %}
+                <form id="progress-form" action="{{ url_for('log_task_progress', task_id=task.id) }}" method="POST" class="text-start">
+                    <div class="mb-3">
+                        <label class="form-label text-light mb-0">Log Progress</label>
+                        <div class="input-group my-3">
+                            <button class="btn btn-outline-secondary px-4" type="button" id="btn-minus">—</button>
+                            <input type="number" 
+                                class="form-control bg-dark text-white border-secondary text-center fs-4 fw-bold" 
+                                id="points-input" 
+                                name="points" 
+                                value="1" 
+                                min="1" 
+                                max="{{ remaining_points }}" 
+                                readonly>
+                            <button class="btn btn-outline-info px-4" type="button" id="btn-plus">+</button>
+                        </div>
+                    </div>
 
-    <div class="history-section text-start">
-        <label class="text-muted small text-uppercase fw-bold mb-3 d-block">Progress History</label>
-        {% if task.progress_entries %}
-            {% for entry in task.progress_entries|sort(attribute='date_logged', reverse=True) %}
-            <div class="mb-3 p-3 border border-secondary rounded bg-dark shadow-sm">
-                <div class="d-flex justify-content-between mb-1">
-                    <span class="text-info fw-bold">+{{ entry.points_completed }} Points</span>
-                    <span class="text-muted smaller">{{ entry.date_logged.strftime('%b %d, %H:%M') }}</span>
-                </div>
-                {% if entry.comment %}
-                    <p class="mb-0 text-light italic small">"{{ entry.comment }}"</p>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small text-uppercase fw-bold">Update Note</label>
+                        <textarea name="update_comment" id="update_comment" class="form-control bg-dark text-white border-secondary" rows="2" placeholder="What did you work on?"></textarea>
+                    </div>
+                    
+                    <button type="submit" id="submit-btn" class="btn btn-lg custom-invert-btn w-100 fw-bold">
+                        Update Progress
+                    </button>
+                </form>
                 {% else %}
-                    <p class="mb-0 text-muted small">No note added.</p>
+                <div class="p-3 border border-success rounded text-center mb-4">
+                    <span class="text-success fw-bold">✓ Task Fully Completed</span>
+                </div>
                 {% endif %}
+
+                <hr class="border-secondary opacity-50 my-4">
+
+                <div class="history-section text-start">
+                    <label class="text-muted small text-uppercase fw-bold mb-3 d-block">Progress History</label>
+                    {% if task.progress_entries %}
+                        {% for entry in task.progress_entries|sort(attribute='date_logged', reverse=True) %}
+                        <div class="mb-3 p-3 border border-secondary rounded bg-dark shadow-sm">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-info fw-bold">+{{ entry.points_completed }} Points</span>
+                                <span class="text-muted smaller">{{ entry.date_logged.strftime('%b %d, %H:%M') }}</span>
+                            </div>
+                            {% if entry.comment %}
+                                <p class="mb-0 text-light italic small">
+                                    "<span class="decrypt-me is-decrypting">{{ entry.comment }}</span>"
+                                </p>
+                            {% else %}
+                                <p class="mb-0 text-muted small">No note added.</p>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted small">No updates logged yet.</p>
+                    {% endif %}
+                </div>
             </div>
-            {% endfor %}
-        {% else %}
-            <p class="text-muted small">No updates logged yet.</p>
-        {% endif %}
+        </div>
     </div>
 </div>
 
 <script nonce="{{ csp_nonce() }}">
-document.addEventListener('DOMContentLoaded', function() {
-    const input = document.getElementById('points-input');
-    const display = document.getElementById('points-display');
-    const submitBtn = document.getElementById('submit-btn');
-    const btnMinus = document.getElementById('btn-minus');
-    const btnPlus = document.getElementById('btn-plus');
-
-    const maxVal = parseInt(input.getAttribute('max'));
-
-    function updateUI(val) {
-        // Update display text
-        display.textContent = val;
-        
-        // Enable/Disable submit button
-        submitBtn.disabled = (val <= 0);
-
-        // Visual feedback for buttons when limits reached
-        btnMinus.classList.toggle('disabled', val <= 0);
-        btnPlus.classList.toggle('disabled', val >= maxVal);
+document.addEventListener("DOMContentLoaded", () => {
+    // 1. Decrypt content
+    if (typeof decryptPageContent === 'function') {
+        decryptPageContent();
     }
 
-    btnMinus.addEventListener('click', () => {
-        let currentVal = parseInt(input.value);
-        if (currentVal > 0) {
-            input.value = currentVal - 1;
-            updateUI(input.value);
-        }
-    });
+    // 2. Points Counter Logic
+    const pointsInput = document.getElementById('points-input');
+    const btnMinus = document.getElementById('btn-minus');
+    const btnPlus = document.getElementById('btn-plus');
+    
+    if (pointsInput) {
+        const maxPoints = parseInt(pointsInput.getAttribute('max'));
+        btnMinus.addEventListener('click', () => {
+            let val = parseInt(pointsInput.value);
+            if (val > 1) pointsInput.value = val - 1;
+        });
+        btnPlus.addEventListener('click', () => {
+            let val = parseInt(pointsInput.value);
+            if (val < maxPoints) pointsInput.value = val + 1;
+        });
+    }
 
-    btnPlus.addEventListener('click', () => {
-        let currentVal = parseInt(input.value);
-        if (currentVal < maxVal) {
-            input.value = currentVal + 1;
-            updateUI(input.value);
-        }
-    });
+    // 3. Form Interceptor
+    const progressForm = document.getElementById('progress-form');
+    if (progressForm) {
+        progressForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const noteInput = document.getElementById('update_comment');
+            const submitBtn = document.getElementById('submit-btn');
+
+            if (noteInput && noteInput.value.trim() !== "") {
+                submitBtn.disabled = true;
+                submitBtn.innerText = "Encrypting...";
+                const encrypted = await encryptWithSessionKey(noteInput.value.trim());
+                if (encrypted) {
+                    noteInput.value = encrypted;
+                }
+            }
+            progressForm.submit();
+        });
+    }
 });
 </script>
 {% endblock %}

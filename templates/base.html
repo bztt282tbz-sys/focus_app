@@ -8,6 +8,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+    <script nonce="{{ csp_nonce() }}">document.addEventListener("DOMContentLoaded", () => {
+    decryptPageContent();
+});</script>
     {% block header %}
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
     <div class="container">
