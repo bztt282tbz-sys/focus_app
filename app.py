@@ -2,7 +2,8 @@ import os
 import json
 import base64
 from flask import Flask, render_template, redirect, url_for, flash, request, jsonify, session, abort
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+import calendar
 from flask_limiter import Limiter
 from flask_talisman import Talisman
 from flask_limiter.util import get_remote_address
@@ -470,6 +471,89 @@ def dashboard():
         task_count=len(focus_tasks),
         today=now_utc.date()
     )
+
+@app.route('/calendar')
+@login_required
+@onboarding_required
+def calendar_view():
+    # Use timezone.utc correctly
+    now_utc = datetime.now(timezone.utc)
+    year = request.args.get('year', now_utc.year, type=int)
+    month = request.args.get('month', now_utc.month, type=int)
+
+    cal = calendar.monthcalendar(year, month)
+    
+    # Calculate date range for the query
+    start_date = datetime(year, month, 1)
+    if month == 12:
+        end_date = datetime(year + 1, 1, 1)
+    else:
+        end_date = datetime(year, month + 1, 1)
+        
+    # Ensure UsersTaskUnencrypted is correctly referenced
+    tasks = UsersTaskUnencrypted.query.filter(
+        UsersTaskUnencrypted.user_id == current_user.id,
+        UsersTaskUnencrypted.is_hidden == False,
+        UsersTaskUnencrypted.date_deleted == None,
+        UsersTaskUnencrypted.date_due >= start_date,
+        UsersTaskUnencrypted.date_due < end_date
+    ).all()
+    
+    task_counts = {}
+    for t in tasks:
+        if t.date_due:
+            # Handle both offset-naive and offset-aware comparisons if necessary
+            day = t.date_due.day
+            task_counts[day] = task_counts.get(day, 0) + 1
+            
+    month_name = calendar.month_name[month]
+    
+    return render_template('calendar.html', cal=cal, month=month, year=year, month_name=month_name, task_counts=task_counts, title="Calendar")
+
+@app.route('/calendar/<date_str>')
+@login_required
+@onboarding_required
+def calendar_day(date_str):
+    try:
+        target_date = datetime.strptime(date_str, '%Y-%m-%d')
+    except ValueError:
+        abort(400)
+        
+    next_day = target_date + timedelta(days=1)
+    
+    # Using the existing progress logic from your dashboard to calculate percentages
+    # Assuming TaskProgressEntry is the correct model name from your schema
+    progress_subquery = db.session.query(
+        TaskProgressEntry.task_id,
+        func.sum(TaskProgressEntry.points_completed).label('total_done')
+    ).group_by(TaskProgressEntry.task_id).subquery()
+    
+    tasks = UsersTaskUnencrypted.query.outerjoin(
+        progress_subquery, UsersTaskUnencrypted.id == progress_subquery.c.task_id
+    ).filter(
+        UsersTaskUnencrypted.user_id == current_user.id,
+        UsersTaskUnencrypted.is_hidden == False,
+        UsersTaskUnencrypted.date_deleted == None,
+        UsersTaskUnencrypted.date_due >= target_date,
+        UsersTaskUnencrypted.date_due < next_day
+    ).all()
+    
+    # Calculating progress for each task object to avoid template errors
+    for task in tasks:
+        task.progress = min(100, int((task.total_done or 0) / task.points_required * 100)) if task.points_required > 0 else 0
+    
+    return render_template('calendar_day.html', tasks=tasks, date_str=date_str, target_date=target_date, title=f"Tasks for {date_str}")
+
+@app.route('/search')
+@login_required
+@onboarding_required
+def search_page():
+    tasks = UsersTaskUnencrypted.query.filter_by(
+        user_id=current_user.id,
+        is_hidden=False,
+        date_deleted=None
+    ).order_by(UsersTaskUnencrypted.date_due.desc()).all()
+    return render_template('search.html', tasks=tasks, title="Search Tasks")
 
 @app.route('/logout')
 @login_required
