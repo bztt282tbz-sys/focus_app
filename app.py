@@ -104,33 +104,18 @@ class SystemSettingBool(db.Model):
 
 class UsersTaskUnencrypted(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    
-    # Linked to User with an index for faster lookups as the DB grows
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
-    
-    # Increased to 100 for better UX; 42 is a bit tight for a task title
     label = db.Column(db.String(100), nullable=False)
     comment = db.Column(db.String(280))
-    
-    # 1: Low, 5: High
     importance = db.Column(db.Integer, default=1) 
     complexity = db.Column(db.Integer, default=2) 
-    
-    # Timestamps
     date_created = db.Column(db.DateTime, default=db.func.now())
     date_start = db.Column(db.DateTime, nullable=False, index=True)
     date_due = db.Column(db.DateTime, nullable=True, index=True)
-    
-    # Visibility and Soft Deletion
     is_hidden = db.Column(db.Boolean, default=False)
     date_hidden = db.Column(db.DateTime, nullable=True) 
-    
-    # Unified Deletion: If date_deletion_requested is set, it's in the 'Trash'
-    # If date_deleted is set, it is officially purged/archived
     date_deletion_requested = db.Column(db.DateTime, nullable=True)
     date_deleted = db.Column(db.DateTime, nullable=True)
-
-    # Relationship back to User model
     author = db.relationship('User', backref=db.backref('tasks', lazy=True))
     progress_entries = db.relationship('TaskProgressEntry', backref='task', lazy=True, cascade="all, delete-orphan")
     
@@ -139,7 +124,6 @@ class TaskProgressEntry(db.Model):
     task_id = db.Column(db.Integer, db.ForeignKey('users_task_unencrypted.id'), nullable=False, index=True)
     points_completed = db.Column(db.Integer, nullable=False)
     date_logged = db.Column(db.DateTime, default=db.func.now())
-
 
 def get_setting(key):
     setting = SystemSettingBool.query.filter_by(key=key).first()
@@ -179,27 +163,21 @@ def about():
 def onboarding():
     if current_user.is_onboarded:
         return redirect(url_for('dashboard'))
-    
     if request.method == 'POST':
         username = request.form.get('username')
         security = request.form.get('security_preference')
-        
         if not username or len(username) < 3:
             flash("Please enter a valid username (min 3 chars).", "danger")
             return render_template('onboarding.html')
-            
         if User.query.filter_by(username=username).first():
             flash("Username already taken.", "danger")
             return render_template('onboarding.html')
-
         current_user.username = username
         current_user.security_preference = security
         current_user.is_onboarded = True
         db.session.commit()
-        
         flash("Profile completed!", "success")
         return redirect(url_for('dashboard'))
-        
     return render_template('onboarding.html')
 
 @app.route('/admin')
@@ -207,7 +185,6 @@ def onboarding():
 @admin_required
 def admin_dashboard():
     users = User.query.all()
-    # Fetch all settings from the DB
     settings = SystemSettingBool.query.all()
     return render_template('admin.html', users=users, settings=settings)
 
@@ -319,7 +296,7 @@ def verify_auth():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
-@app.route('/tasks/int:task_id/log_progress', methods=['POST'])
+@app.route('/tasks/<int:task_id>/log_progress', methods=['POST'])
 @login_required
 @onboarding_required
 def log_task_progress(task_id):
@@ -361,13 +338,13 @@ def toggle_setting(setting_key):
 @login_required
 @onboarding_required
 def view_task(task_id):
-    # Fetch task or return 404 if it doesn't exist
-    task = UsersTaskUnencrypted.query.get_or_404(task_id)
-    completed_points = sum(entry.points_completed for entry in task.progress_entries)
-    remaining_points = max(0, task.complexity - completed_points)
     task = UsersTaskUnencrypted.query.get_or_404(task_id)
     if task.user_id != current_user.id:
         abort(403)
+        
+    completed_points = sum(entry.points_completed for entry in task.progress_entries)
+    remaining_points = max(0, task.complexity - completed_points)
+    
     return render_template('task_detail.html', 
                        task=task, 
                        completed_points=completed_points, 
@@ -388,16 +365,13 @@ def new_task():
         date_start_str = request.form.get('date_start')
         date_due_str = request.form.get('date_due')
 
-        # Basic validation mapped to your model
         if not label or len(label) > 100:
             flash("Task label is required and must be under 100 characters.", "danger")
             return redirect(url_for('new_task'))
 
-        # Parse dates (HTML5 date inputs return YYYY-MM-DD)
         date_start = datetime.strptime(date_start_str, '%Y-%m-%d') if date_start_str else datetime.utcnow()
         date_due = datetime.strptime(date_due_str, '%Y-%m-%d') if date_due_str else None
 
-        # Create the new task
         task = UsersTaskUnencrypted(
             user_id=current_user.id,
             label=label,
@@ -440,6 +414,3 @@ def logout():
     logout_user()
     flash("Logged out successfully.", "info")
     return redirect(url_for('login'))
-
-
-
