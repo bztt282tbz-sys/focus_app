@@ -1,6 +1,6 @@
 /* 1. Global Layout */
 body {
-    background-color: #1a1a1a;
+    background-color: #2d2d2d; /* Lightened background */
     color: #ffffff;
     display: flex;
     flex-direction: column;
@@ -13,7 +13,7 @@ html, body {
 }
 
 .text-light {
-    color: #e0e0e0 !important;
+    color: #f0f0f0 !important; /* Slightly brighter for contrast */
     line-height: 1.6;
 }
 
@@ -22,7 +22,7 @@ html, body {
 }
 
 .text-muted {
-    color: #bbb !important;
+    color: #a0a0a0 !important; /* Adjusted for better visibility */
 }
 
 .link-info {
@@ -58,7 +58,8 @@ main.container {
 .feature-item {
     border-left: 3px solid #0dcaf0;
     padding: 10px 1.5rem;
-    background: rgba(255, 255, 255, 0.03);
+    /* Slightly darker than background */
+    background: rgba(0, 0, 0, 0.15); 
     border-radius: 0 8px 8px 0;
     margin-bottom: 1.5rem;
 }
@@ -67,11 +68,12 @@ main.container {
     width: 100%;
     max-width: 650px;
     margin: 40px auto;
-    background: rgba(255, 255, 255, 0.02);
+    /* Slightly darker than background */
+    background: rgba(0, 0, 0, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 16px;
     padding: 40px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
 /* 4. Buttons and Links */
@@ -104,6 +106,11 @@ main.container {
 }
 
 /* 5. Navigation and Footer */
+/* Navbar set to be darker than the body background */
+.navbar {
+    background-color: #121212 !important; 
+}
+
 .navbar-nav .nav-link.active {
     color: #fff !important;
     font-weight: 500;
@@ -122,6 +129,7 @@ main.container {
     padding: 20px;
     width: 100%;
     text-align: center;
+    background-color: #222222; /* Slightly darker than body for grounding */
 }
 
 /* 6. Premium Slider (REPAIRED) */
@@ -131,7 +139,7 @@ main.container {
     width: 100%;
     height: 10px;
     border-radius: 5px;
-    background: #333; /* Fallback background before JS updates the fill */
+    background: #1a1a1a; /* Dark track for contrast */
     outline: none;
     cursor: pointer;
     margin: 25px 0;
@@ -146,7 +154,7 @@ main.container {
     height: 22px;
     border-radius: 50%;
     background: #ffffff;
-    border: 3px solid #0dcaf0; /* Theme cyan color */
+    border: 3px solid #0dcaf0;
     box-shadow: 0 0 10px rgba(13, 202, 240, 0.5);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     cursor: pointer;
