@@ -23,7 +23,7 @@ const setStatus = (msg, isError = false) => {
             } else {
                 alertElement.remove();
             }
-        }, 7000);
+        }, 3500);
     }
 };
 
@@ -50,7 +50,6 @@ function bufferEncode(value) {
 
 // --- Crypto Core ---
 
-// --- Crypto Core ---
 async function getCryptoKey() {
     const hexKey = sessionStorage.getItem("e2e_key");
     if (!hexKey) return null;
@@ -88,58 +87,34 @@ async function decryptWithSessionKey(base64Data) {
 }
 
 // --- Batch Decryption ---
+
 async function decryptPageContent() {
     const elements = document.querySelectorAll('.decrypt-me');
     const cryptoKey = await getCryptoKey();
     
+    if (!cryptoKey) {
+        elements.forEach(el => {
+            if (el.innerText.trim().length > 20) {
+                el.innerText = "🔒 Locked";
+            }
+            el.classList.remove('is-decrypting');
+        });
+        return;
+    }
+
     for (const el of elements) {
         const ciphertext = el.innerText.trim();
-        if (ciphertext.length > 20) { // Basic check for Base64 ciphertext
+        if (ciphertext && ciphertext.length > 20 && !ciphertext.includes(" ")) {
             const decrypted = await decryptWithSessionKey(ciphertext);
-            if (decrypted) el.innerText = decrypted;
+            if (decrypted) {
+                el.innerText = decrypted;
+            }
         }
         el.classList.remove('is-decrypting');
         el.style.opacity = "1";
     }
 }
 
-// --- Global Initialization ---
-document.addEventListener("DOMContentLoaded", () => {
-    decryptPageContent();
-
-    // Intercept Create Task Form
-    const taskForm = document.getElementById('task-form');
-    if (taskForm) {
-        taskForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const labelInput = document.getElementById('label');
-            const commentInput = document.getElementById('comment');
-            
-            const encLabel = await encryptWithSessionKey(labelInput.value);
-            const encComment = await encryptWithSessionKey(commentInput.value);
-
-            if (encLabel !== null) {
-                labelInput.value = encLabel;
-                commentInput.value = encComment || "";
-                taskForm.submit();
-            }
-        });
-    }
-
-    // Intercept Progress Update Form
-    const progressForm = document.getElementById('progress-form');
-    if (progressForm) {
-        progressForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const noteInput = document.getElementById('update_comment');
-            if (noteInput && noteInput.value.trim() !== "") {
-                const encrypted = await encryptWithSessionKey(noteInput.value);
-                if (encrypted) noteInput.value = encrypted;
-            }
-            progressForm.submit();
-        });
-    }
-});
 // --- Registration/Auth Logic ---
 
 async function registerDevice() {
@@ -218,53 +193,86 @@ async function authenticateDevice() {
         if (authBtn) authBtn.disabled = false;
     }
 }
-// ... (Keep your existing UI Helpers, WebAuthn Helpers, and Crypto Core functions) ...
+
+// --- Global Initialization ---
 
 document.addEventListener("DOMContentLoaded", () => {
+    // 1. Decrypt existing page content
+    decryptPageContent();
+
+    // 2. Auto-dismiss existing flash messages after 7 seconds
+    document.querySelectorAll('#flash-container .alert').forEach(alert => {
+        setTimeout(() => {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Alert) {
+                const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+                bsAlert.close();
+            } else {
+                const closeBtn = alert.querySelector('.btn-close');
+                if (closeBtn) closeBtn.click();
+                else alert.remove();
+            }
+        }, 3500);
+    });
+
+    // 3. Register/Auth button listeners
     const regBtn = document.getElementById('reg-btn');
     const authBtn = document.getElementById('auth-btn');
-    const taskForm = document.getElementById('task-form');
-
     if (regBtn) regBtn.addEventListener('click', registerDevice);
     if (authBtn) authBtn.addEventListener('click', authenticateDevice);
 
-    // --- FIXED: Form Interceptor with Submission Lock ---
+    // 4. Delete Confirmation Handler
+    const deleteBtn = document.getElementById('delete-btn-trigger');
+    const deleteForm = document.getElementById('delete-task-form');
+    if (deleteBtn && deleteForm) {
+        deleteBtn.addEventListener('click', () => {
+            if (confirm('Are you sure you want to delete this task?')) {
+                deleteForm.submit();
+            }
+        });
+    }
+
+    // 5. Points Counter Logic
+    const pointsInput = document.getElementById('points-input');
+    const btnMinus = document.getElementById('btn-minus');
+    const btnPlus = document.getElementById('btn-plus');
+    if (pointsInput) {
+        const maxPoints = parseInt(pointsInput.getAttribute('max'));
+        btnMinus.addEventListener('click', () => {
+            let val = parseInt(pointsInput.value);
+            if (val > 1) pointsInput.value = val - 1;
+        });
+        btnPlus.addEventListener('click', () => {
+            let val = parseInt(pointsInput.value);
+            if (val < maxPoints) pointsInput.value = val + 1;
+        });
+    }
+
+    // 6. Intercept Create Task Form (E2E Encryption)
+    const taskForm = document.getElementById('task-form');
     if (taskForm) {
-        let isProcessing = false; // Prevents the form from submitting twice
-
+        let isProcessing = false;
         taskForm.addEventListener('submit', async (e) => {
-            // If we are already encrypting, let the second submission through
             if (isProcessing) return; 
-
-            // 1. Stop the initial plain-text submission
             e.preventDefault(); 
             
             const labelInput = document.getElementById('label');
             const commentInput = document.getElementById('comment');
             const submitBtn = taskForm.querySelector('button[type="submit"]');
 
-            // Visual feedback: Disable button while encrypting
             if (submitBtn) {
                 submitBtn.disabled = true;
                 submitBtn.innerText = "Encrypting...";
             }
 
-            // 2. Perform encryption
-            console.log("Encrypting task data...");
             const encryptedLabel = await encryptWithSessionKey(labelInput.value);
             const encryptedComment = await encryptWithSessionKey(commentInput.value || "");
 
             if (encryptedLabel) {
-                // 3. Overwrite inputs with encrypted strings
                 labelInput.value = encryptedLabel;
                 commentInput.value = encryptedComment;
-
-                // 4. Set flag and submit manually
                 isProcessing = true; 
-                console.log("Encryption complete. Submitting to server.");
                 taskForm.submit(); 
             } else {
-                // Reset UI on failure
                 isProcessing = false;
                 if (submitBtn) {
                     submitBtn.disabled = false;
@@ -275,7 +283,29 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Toolbox Decryption (Helper for verifying it worked)
+    // 7. Intercept Progress Update Form
+    const progressForm = document.getElementById('progress-form');
+    if (progressForm) {
+        progressForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const noteInput = document.getElementById('update_comment');
+            const submitBtn = document.getElementById('submit-btn');
+
+            if (noteInput && noteInput.value.trim() !== "") {
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerText = "Encrypting...";
+                }
+                const encrypted = await encryptWithSessionKey(noteInput.value.trim());
+                if (encrypted) {
+                    noteInput.value = encrypted;
+                }
+            }
+            progressForm.submit();
+        });
+    }
+
+    // 8. Toolbox Decryption (Helper)
     const decryptBtn = document.getElementById('decrypt-btn');
     if (decryptBtn) {
         decryptBtn.addEventListener('click', async () => {
@@ -291,52 +321,4 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
-});
-
-/**
- * Automatically finds all elements with class 'encrypt-me', 
- * decrypts their content, and updates the UI.
- */
-/**
- * Automatically decrypts all elements with 'decrypt-me' class.
- */
-// --- Updated Batch Decryption ---
-async function decryptPageContent() {
-    const elements = document.querySelectorAll('.decrypt-me');
-    const cryptoKey = await getCryptoKey();
-    
-    // If no key is found, we just show the "Locked" state
-    if (!cryptoKey) {
-        elements.forEach(el => {
-            // Only show locked if the content actually looks encrypted
-            if (el.innerText.trim().length > 20) {
-                el.innerText = "🔒 Locked";
-            }
-            el.classList.remove('is-decrypting');
-        });
-        return;
-    }
-
-    for (const el of elements) {
-        const ciphertext = el.innerText.trim();
-        
-        // --- FIX: Only decrypt if it looks like a Base64 IV+Ciphertext block ---
-        // Plain text like "No description" will be ignored and remain visible
-        if (ciphertext && ciphertext.length > 20 && !ciphertext.includes(" ")) {
-            const decrypted = await decryptWithSessionKey(ciphertext);
-            if (decrypted) {
-                el.innerText = decrypted;
-            }
-        }
-        
-        // Finalize UI
-        el.classList.remove('is-decrypting');
-        el.style.opacity = "1";
-    }
-}
-
-
-// Ensure this runs on every page load
-document.addEventListener("DOMContentLoaded", () => {
-    decryptPageContent();
 });

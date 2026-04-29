@@ -354,7 +354,13 @@ def view_user_detail(user_id):
 @onboarding_required
 @admin_required
 def toggle_setting(setting_key):
-    if setting_key not in ['registration_enabled', 'login_enabled', 'api_enabled']:
+    allowed_settings = [
+        'registration_enabled', 
+        'login_enabled', 
+        'api_enabled', 
+        'perma_delete_task_enabled'
+    ]
+    if setting_key not in allowed_settings:
         abort(400)
     setting = SystemSettingBool.query.filter_by(key=setting_key).first()
     if not setting:
@@ -367,22 +373,87 @@ def toggle_setting(setting_key):
     flash(f"System setting '{setting_key}' has been {status}.", "success")
     return redirect(url_for('admin_dashboard'))
 
-@app.route('/tasks/<int:task_id>', methods=['GET'])
+@app.route('/tasks/<int:task_id>/delete', methods=['POST'])
 @login_required
 @onboarding_required
-def view_task(task_id):
+def delete_task(task_id):
     task = UsersTask.query.get_or_404(task_id)
     if task.user_id != current_user.id:
         abort(403)
-        
+
+    is_hard_delete = get_setting('perma_delete_task_enabled')
+    if is_hard_delete:
+        db.session.delete(task)
+    else:
+        task.date_deleted = datetime.now(timezone.utc)
+        task.is_hidden = True
+    
+    db.session.commit()
+    flash("Task removed.", "success")
+
+    # REDIRECTION LOGIC:
+    # Check for 'back' in the URL arguments first
+    back_url = request.args.get('back')
+    if back_url:
+        return redirect(back_url)
+    return redirect(url_for('dashboard'))
+
+@app.route('/tasks/<int:task_id>/hide', methods=['POST'])
+@login_required
+@onboarding_required
+def hide_task(task_id):
+    task = UsersTask.query.get_or_404(task_id)
+    if task.user_id != current_user.id:
+        abort(403)
+
+    task.is_hidden = True
+    task.date_hidden = datetime.now(timezone.utc)
+    db.session.commit()
+    
+    flash("Task hidden.", "success")
+
+    # REDIRECTION LOGIC:
+    back_url = request.args.get('back')
+    if back_url:
+        return redirect(back_url)
+    return redirect(url_for('dashboard'))
+
+@app.route('/tasks/<int:task_id>/unhide', methods=['POST'])
+@login_required
+@onboarding_required
+def unhide_task(task_id):
+    task = UsersTask.query.get_or_404(task_id)
+    if task.user_id != current_user.id:
+        abort(403)
+
+    task.is_hidden = False
+    task.date_hidden = None
+    task.date_deleted = None
+    db.session.commit()
+    
+    flash("Task restored.", "success")
+
+    # REDIRECTION LOGIC:
+    back_url = request.args.get('back')
+    if back_url:
+        return redirect(back_url)
+    return redirect(url_for('dashboard'))
+
+@app.route('/tasks/<int:task_id>', methods=['GET'])
+@login_required
+def view_task(task_id):
+    task = UsersTask.query.get_or_404(task_id)
+    
+    # Get the back link from the URL, default to dashboard
+    back_url = request.args.get('back', url_for('dashboard'))
+    
     completed_points = sum(entry.points_completed for entry in task.progress_entries)
     remaining_points = max(0, task.complexity - completed_points)
     
     return render_template('task_detail.html', 
                        task=task, 
-                       completed_points=completed_points, 
-                       remaining_points=remaining_points, 
-                       title=f"Task: {task.label}")
+                       back_url=back_url, # Pass the actual URL string
+                       remaining_points=remaining_points)
 
 
 @app.route('/tasks/new', methods=['GET', 'POST'])
@@ -402,7 +473,7 @@ def new_task():
             flash("Task label is required and must be under 100 characters.", "danger")
             return redirect(url_for('new_task'))
 
-        date_start = datetime.strptime(date_start_str, '%Y-%m-%d') if date_start_str else datetime.utcnow()
+        date_start = datetime.strptime(date_start_str, '%Y-%m-%d') if date_start_str else datetime.now(timezone.utc)
         date_due = datetime.strptime(date_due_str, '%Y-%m-%d') if date_due_str else None
 
         task = UsersTask(
@@ -476,83 +547,106 @@ def dashboard():
 @login_required
 @onboarding_required
 def calendar_view():
-    # Use timezone.utc correctly
     now_utc = datetime.now(timezone.utc)
     year = request.args.get('year', now_utc.year, type=int)
     month = request.args.get('month', now_utc.month, type=int)
 
     cal = calendar.monthcalendar(year, month)
-    
-    # Calculate date range for the query
-    start_date = datetime(year, month, 1)
+    start_of_month = datetime(year, month, 1)
     if month == 12:
-        end_date = datetime(year + 1, 1, 1)
+        next_month_start = datetime(year + 1, 1, 1)
     else:
-        end_date = datetime(year, month + 1, 1)
+        next_month_start = datetime(year, month + 1, 1)
         
-    # Ensure UsersTask is correctly referenced
+    # Get tasks that EITHER start or are due in this month
     tasks = UsersTask.query.filter(
         UsersTask.user_id == current_user.id,
         UsersTask.is_hidden == False,
         UsersTask.date_deleted == None,
-        UsersTask.date_due >= start_date,
-        UsersTask.date_due < end_date
+        or_(
+            (UsersTask.date_start >= start_of_month) & (UsersTask.date_start < next_month_start),
+            (UsersTask.date_due >= start_of_month) & (UsersTask.date_due < next_month_start)
+        )
     ).all()
     
-    task_counts = {}
+    due_counts = {}
+    start_counts = {}
+
     for t in tasks:
-        if t.date_due:
-            # Handle both offset-naive and offset-aware comparisons if necessary
+        # Check for start date in current month
+        if t.date_start and t.date_start.year == year and t.date_start.month == month:
+            day = t.date_start.day
+            start_counts[day] = start_counts.get(day, 0) + 1
+            
+        # Check for due date in current month
+        if t.date_due and t.date_due.year == year and t.date_due.month == month:
             day = t.date_due.day
-            task_counts[day] = task_counts.get(day, 0) + 1
+            due_counts[day] = due_counts.get(day, 0) + 1
             
     month_name = calendar.month_name[month]
     
-    return render_template('calendar.html', cal=cal, month=month, year=year, month_name=month_name, task_counts=task_counts, title="Calendar")
+    # Navigation logic
+    prev_month = month - 1 if month > 1 else 12
+    prev_year = year if month > 1 else year - 1
+    next_m = month + 1 if month < 12 else 1
+    next_y = year if month < 12 else year + 1
+
+    return render_template('calendar.html', 
+                           cal=cal, month=month, year=year, 
+                           month_name=month_name, 
+                           due_counts=due_counts, 
+                           start_counts=start_counts,
+                           prev_month=prev_month, prev_year=prev_year,
+                           next_month=next_m, next_year=next_y,
+                           title="Calendar")
+
 
 @app.route('/calendar/<date_str>')
 @login_required
 @onboarding_required
 def calendar_day(date_str):
     try:
-        target_date = datetime.strptime(date_str, '%Y-%m-%d')
+        # 1. Convert the URL string to a datetime object
+        target_datetime = datetime.strptime(date_str, '%Y-%m-%d')
+        target_date = target_datetime.date()
+        
+        # 2. Calculate the string values for the adjacent days
+        prev_day = (target_datetime - timedelta(days=1)).strftime('%Y-%m-%d')
+        next_day = (target_datetime + timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        # Define boundaries for the SQL query
+        day_start = datetime.combine(target_date, datetime.min.time())
+        day_end = datetime.combine(target_date, datetime.max.time())
     except ValueError:
         abort(400)
-        
-    next_day = target_date + timedelta(days=1)
     
-    # Using the existing progress logic from your dashboard to calculate percentages
-    # Assuming TaskProgressEntry is the correct model name from your schema
-    progress_subquery = db.session.query(
-        TaskProgressEntry.task_id,
-        func.sum(TaskProgressEntry.points_completed).label('total_done')
-    ).group_by(TaskProgressEntry.task_id).subquery()
-    
-    tasks = UsersTask.query.outerjoin(
-        progress_subquery, UsersTask.id == progress_subquery.c.task_id
-    ).filter(
+    tasks = UsersTask.query.filter(
         UsersTask.user_id == current_user.id,
         UsersTask.is_hidden == False,
         UsersTask.date_deleted == None,
-        UsersTask.date_due >= target_date,
-        UsersTask.date_due < next_day
+        UsersTask.date_start <= day_end,
+        or_(
+            UsersTask.date_due >= day_start,
+            UsersTask.date_due == None
+        )
     ).all()
     
-    # Calculating progress for each task object to avoid template errors
-    for task in tasks:
-        task.progress = min(100, int((task.total_done or 0) / task.points_required * 100)) if task.points_required > 0 else 0
-    
-    return render_template('calendar_day.html', tasks=tasks, date_str=date_str, target_date=target_date, title=f"Tasks for {date_str}")
+    return render_template('calendar_day.html', 
+                           tasks=tasks, 
+                           target_date=target_date, 
+                           date_str=date_str,
+                           prev_day=prev_day,    # Passing to template
+                           next_day=next_day)    # Passing to template
 
 @app.route('/search')
 @login_required
 @onboarding_required
 def search_page():
+    # Removed the filters for is_hidden and date_deleted
     tasks = UsersTask.query.filter_by(
-        user_id=current_user.id,
-        is_hidden=False,
-        date_deleted=None
+        user_id=current_user.id
     ).order_by(UsersTask.date_due.desc()).all()
+    
     return render_template('search.html', tasks=tasks, title="Search Tasks")
 
 @app.route('/logout')

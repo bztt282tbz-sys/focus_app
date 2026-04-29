@@ -10,45 +10,69 @@
 
         <div id="resultsList">
             {% for task in tasks %}
-            {# Remove data-label here because we will search the actual visible text #}
-            <div class="feature-item mb-3 task-node">
+            <div class="feature-item mb-3 task-node {% if task.is_hidden or task.date_deleted %}opacity-50{% endif %}">
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">
-                        <a href="{{ url_for('view_task', task_id=task.id) }}" class="text-white text-decoration-none decrypt-me is-decrypting">
+                        <a href="{{ url_for('view_task', task_id=task.id, back=request.full_path) }}" class="text-white text-decoration-none decrypt-me is-decrypting">
                             {{ task.label }}
                         </a>
+                        {% if task.date_deleted %}
+                            <span class="badge bg-danger ms-2" style="font-size: 0.7rem;">Deleted</span>
+                        {% elif task.is_hidden %}
+                            <span class="badge bg-secondary ms-2" style="font-size: 0.7rem;">Hidden</span>
+                        {% endif %}
                     </h5>
-                    <span class="badge bg-info text-dark">Due: {{ task.date_due.strftime('%Y-%m-%d') if task.date_due else 'No Date' }}</span>
+                    <div class="text-end">
+                        <span class="badge bg-info text-dark d-block">Due: {{ task.date_due.strftime('%Y-%m-%d') if task.date_due else 'No Date' }}</span>
+                    </div>
                 </div>
             </div>
+            {% else %}
+                {# This shows if the 'tasks' list is empty on page load #}
+                <div id="noTasksInitial" class="text-center text-muted py-5">
+                    <p>No tasks found.</p>
+                </div>
             {% endfor %}
+
+            {# This is hidden by default and toggled via JavaScript #}
+            <div id="noResultsMessage" class="text-center text-muted py-5 d-none">
+                <p>No matching tasks found.</p>
+            </div>
         </div>
     </div>
 </div>
+
 <script nonce="{{ csp_nonce() }}">
-    // 1. Run the decryption first
-    // This assumes your decryptPageContent() function is globally available in script.js
     document.addEventListener("DOMContentLoaded", async () => {
-        await decryptPageContent(); 
-        console.log("Search ready: Data decrypted.");
+        if (typeof decryptPageContent === "function") {
+            await decryptPageContent(); 
+        }
     });
 
-    // 2. Updated Search Logic
     document.getElementById('taskSearch').addEventListener('input', function(e) {
         const term = e.target.value.toLowerCase();
         const taskNodes = document.querySelectorAll('.task-node');
+        const noResultsMessage = document.getElementById('noResultsMessage');
+        let visibleCount = 0;
         
         taskNodes.forEach(node => {
-            // Find the decrypted link inside the node
             const labelElement = node.querySelector('.decrypt-me');
             const readableText = labelElement ? labelElement.innerText.toLowerCase() : "";
             
             if (readableText.includes(term)) {
-                node.style.display = 'block';
+                node.classList.remove('d-none');
+                visibleCount++;
             } else {
-                node.style.display = 'none';
+                node.classList.add('d-none');
             }
         });
+
+        // Toggle the "No matching tasks" message based on visibility count
+        if (visibleCount === 0 && taskNodes.length > 0) {
+            noResultsMessage.classList.remove('d-none');
+        } else {
+            noResultsMessage.classList.add('d-none');
+        }
     });
 </script>
 {% endblock %}

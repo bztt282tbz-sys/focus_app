@@ -1,49 +1,104 @@
 {% extends "base.html" %}
+
+{# Move the Macro to the top to ensure Jinja2 recognizes it before the loops #}
+{% macro render_task_card(task, current_date_str) %}
+    <div class="feature-item mb-3 position-relative bg-dark border border-secondary p-3 rounded">
+        <div class="d-flex justify-content-between align-items-start">
+            <h5 class="text-white mb-1">
+                {# We only pass the ID, origin, and the specific date string #}
+                <a href="{{ url_for('view_task', task_id=task.id, back=url_for('calendar_day', date_str=date_str)) }}" 
+                   class="text-white text-decoration-none stretched-link decrypt-me is-decrypting">
+                    {{ task.label }}
+                </a>
+            </h5>
+        </div>
+        
+        
+        {% set complexity_labels = {1: 'Trivial', 2: 'Easy', 3: 'Moderate', 4: 'Hard', 5: 'Complex'} %}
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <p class="text-light small mb-0">
+                <span class="text-muted">Ends: 
+                    {{ task.date_due.strftime('%b %d') if task.date_due else 'No Deadline' }}
+                </span>
+                <span class="ms-2">|</span>
+                <span class="ms-2">{{ complexity_labels.get(task.complexity, 'Standard') }}</span>
+            </p>
+            <div class="progress" style="width: 120px; height: 4px; background-color: rgba(255,255,255,0.1);">
+                <div class="progress-bar bg-info" role="progressbar" style="width: {{ task.progress }}%"></div>
+            </div>
+        </div>
+    </div>
+{% endmacro %}
+
 {% block content %}
 <div class="container py-5">
     <div class="mx-auto text-start" style="max-width: 800px;">
         <div class="mb-3">
             <a href="{{ url_for('calendar_view') }}" class="text-decoration-none text-muted d-inline-flex align-items-center small fw-medium transition-all" style="opacity: 0.8;">
-                <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" width="16" height="16" fill="currentColor" class="bi bi-chevron-left me-1" viewBox="0 0 16 16">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-left me-1" viewBox="0 0 16 16">
                   <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
                 </svg>
                 Back to Calendar
             </a>
         </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-4 bg-dark border border-secondary p-2 rounded shadow-sm">
+            <a href="{{ url_for('calendar_day', date_str=prev_day) }}" class="btn btn-sm btn-link text-info text-decoration-none">
+                &larr; Prev
+            </a>
+            
+            <h4 class="text-white mb-0 fw-bold">{{ target_date.strftime('%B %d, %Y') }}</h4>
+            
+            <a href="{{ url_for('calendar_day', date_str=next_day) }}" class="btn btn-sm btn-link text-info text-decoration-none">
+                Next &rarr;
+            </a>
+        </div>
         
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h3 class="text-white mb-0">Tasks for {{ target_date.strftime('%B %d, %Y') }}</h3>
-            <a href="{{ url_for('new_task') }}" class="btn btn-sm custom-invert-btn px-3">+ Add Task</a>
+            <a href="{{ url_for('new_task') }}" class="btn btn-sm btn-outline-light px-3">+ Add Task</a>
         </div>
 
+        {# Initialize namespaces to track if we found tasks in either category #}
+        {% set starting_count = namespace(value=0) %}
+        {% set due_count = namespace(value=0) %}
+
         {% if tasks %}
-            {% for task in tasks %}
-                <div class="feature-item mb-4 position-relative">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <h5 class="text-white mb-1">
-                            <a href="{{ url_for('view_task', task_id=task.id) }}" class="text-white text-decoration-none stretched-link decrypt-me">
-                                {{ task.label }} 📝
-                            </a>
-                        </h5>
-                        <span class="fw-bold text-info small">{{ task.progress }}%</span>
-                    </div>
-                    
-                    {% set complexity_labels = {1: 'Trivial', 2: 'Easy', 3: 'Moderate', 4: 'Hard', 5: 'Complex'} %}
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                        <p class="text-light small mb-0">
-                            <span class="text-light">Due: {{ task.date_due.strftime('%b %d %Y') }}</span>
-                            <span class="ms-2">|</span>
-                            <span class="ms-2">{{ complexity_labels[task.complexity] }}</span>
-                        </p>
-                        <div class="progress" style="width: 120px; height: 4px; background-color: rgba(255,255,255,0.1);">
-                            <div class="progress-bar bg-info" role="progressbar" style="width: {{ task.progress }}%"></div>
-                        </div>
-                    </div>
-                </div>
-            {% endfor %}
+            {# --- SECTION: STARTING TODAY --- #}
+            <div class="mb-5">
+                <h6 class="text-info text-uppercase small fw-bold mb-3 border-bottom border-secondary pb-2">🚀 Starting Today</h6>
+                {% for task in tasks %}
+                    {# Safety check for date_start and comparison with the date_str from the URL #}
+                    {% if task.date_start and task.date_start.strftime('%Y-%m-%d') == date_str %}
+                        {% set starting_count.value = starting_count.value + 1 %}
+                        {{ render_task_card(task) }}
+                    {% endif %}
+                {% endfor %}
+                
+                {% if starting_count.value == 0 %}
+                    <p class="text-muted small italic">No new tasks starting today.</p>
+                {% endif %}
+            </div>
+
+            {# --- SECTION: DUE TODAY --- #}
+            <div class="mb-5">
+                <h6 class="text-warning text-uppercase small fw-bold mb-3 border-bottom border-secondary pb-2">⚠️ Due Today</h6>
+                {% for task in tasks %}
+                    {# Safety check for date_due is critical here to avoid 500 Error #}
+                    {% if task.date_due and task.date_due.strftime('%Y-%m-%d') == date_str %}
+                        {% set due_count.value = due_count.value + 1 %}
+                        {{ render_task_card(task) }}
+                    {% endif %}
+                {% endfor %}
+                
+                {% if due_count.value == 0 %}
+                    <p class="text-muted small italic">No deadlines today!</p>
+                {% endif %}
+            </div>
         {% else %}
+            {# Scenario where the SQL query returned no tasks for this day at all #}
             <div class="feature-item text-center p-5 opacity-75">
-                <p class="text-muted mb-0">No tasks due on this day. Time to relax or <a href="{{ url_for('new_task') }}" class="link-info">add more</a>?</p> 
+                <p class="text-muted mb-0">No active tasks on this day. <a href="{{ url_for('new_task') }}" class="link-info">Create one?</a></p> 
             </div>
         {% endif %}
     </div>

@@ -8,8 +8,10 @@
             <h3 class="text-light fw-bold mb-3">Hello, {{ current_user.username }}!</h3>
             <h6 class="text-secondary small fw-bold mb-1">Today's Date:</h6>
             <h4 class="text-light fw-bold mb-1">{{ today.strftime('%B  %d  %Y') }}</h4>
-            <p class="text-muted mt-3 my-0">You added <span class="text-info fw-bold">{{ tasks|length + past_tasks|length }}</span> tasks in total!</p>
+            <p class="text-muted mt-3 my-0">There are <span class="text-info">{{ tasks|length }}</span> available tasks.</p>
+            <p class="text-muted my-0">You added <span class="text-info">{{ tasks|length + past_tasks|length }}</span> tasks in total!</p>
         </div>
+        <a href="{{ url_for('new_task') }}" class="btn btn-sm btn-outline-light px-3 mt-1">+ Add Task</a>
     </div>
 
     {# Active Focus List #}
@@ -21,7 +23,7 @@
                         <h5 class="text-white mb-1">
                             <a href="{{ url_for('view_task', task_id=task.id) }}" class="text-white text-decoration-none stretched-link">
                                 {# Wrap only the label in the decrypt class #}
-                                <span class="decrypt-me is-decrypting">{{ task.label }}</span> 📝
+                                📝 <span class="decrypt-me is-decrypting">{{ task.label }}</span> 
                             </a>
                         </h5>
                         <span class="fw-bold text-info small">{{ task.progress }}%</span>
@@ -62,12 +64,12 @@
             <div class="collapse" id="pastTasksCollapse">
                 <div class="text-start pt-3">
                     {% for task in past_tasks %}
-                        <div class="feature-item mb-4 position-relative">
+                        <div class="feature-item mb-4 position-relative  opacity-75 ">
                     <div class="d-flex justify-content-between align-items-start">
                         <h5 class="text-white mb-1">
                             <a href="{{ url_for('view_task', task_id=task.id) }}" class="text-white text-decoration-none stretched-link">
                                 {# Wrap only the label in the decrypt class #}
-                                <span class="decrypt-me is-decrypting">{{ task.label }}</span> 📝
+                                <span class="decrypt-me is-decrypting text-decoration-line-through">{{ task.label }}</span> 
                             </a>
                         </h5>
                         <span class="fw-bold text-info small">{{ task.progress }}%</span>

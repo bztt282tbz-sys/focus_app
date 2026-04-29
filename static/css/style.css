@@ -66,7 +66,6 @@ main.container {
 .feature-item {
     border-left: 3px solid #0dcaf0;
     padding: 10px 1.5rem;
-    /* Slightly darker than background */
     background: rgba(0, 0, 0, 0.15); 
     border-radius: 0 8px 8px 0;
     margin-bottom: 1.5rem;
@@ -76,7 +75,6 @@ main.container {
     width: 100%;
     max-width: 650px;
     margin: 40px auto;
-    /* Slightly darker than background */
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 16px;
@@ -105,11 +103,10 @@ main.container {
     padding: 0 15px !important;
 }
 
-/* Update this section in your CSS */
 .admin-panel-btn {
-    display: inline-block; /* Changed from block to inline-block */
-    width: 100%;          /* Set fixed width */
-    min-width: 300px;      /* Force the width */
+    display: inline-block;
+    width: 100%;          
+    min-width: 300px;      
 }
 
 @media (min-width: 768px) {
@@ -121,7 +118,6 @@ main.container {
 }
 
 /* 5. Navigation and Footer */
-/* Navbar set to be darker than the body background */
 .navbar {
     background-color: #121212 !important; 
 }
@@ -144,7 +140,6 @@ main.container {
     padding: 20px;
     width: 100%;
     text-align: center;
-    /*background-color: #222222;  Slightly darker than body for grounding */
 }
 
 .fade-out {
@@ -152,21 +147,20 @@ main.container {
     transition: opacity 1s ease-out;
 }
 
-/* 6. Premium Slider (REPAIRED) */
+/* 6. Premium Slider */
 .premium-slider {
     -webkit-appearance: none;
     appearance: none;
     width: 100%;
     height: 10px;
     border-radius: 5px;
-    background: #1a1a1a; /* Dark track for contrast */
+    background: #1a1a1a; 
     outline: none;
     cursor: pointer;
     margin: 25px 0;
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Thumb for Chrome, Safari, Edge */
 .premium-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
@@ -180,7 +174,6 @@ main.container {
     cursor: pointer;
 }
 
-/* Thumb for Firefox */
 .premium-slider::-moz-range-thumb {
     width: 18px;
     height: 18px;
@@ -221,7 +214,7 @@ main.container {
 
 .alert {
     border: none;
-    background-color: rgba(255, 255, 255, 0.1); /* Subtle glass effect */
+    background-color: rgba(255, 255, 255, 0.1); 
     color: #fff;
 }
 
@@ -229,17 +222,119 @@ main.container {
 .alert-success { background-color: rgba(25, 135, 84, 0.2); border: 1px solid #198754; }
 .alert-info { background-color: rgba(13, 202, 240, 0.2); border: 1px solid #0dcaf0; }
 
-/* Targets the placeholder text specifically */
 .form-control::placeholder {
-    color: #adb5bd; /* A light grey that looks good on dark backgrounds */
-    opacity: 1;     /* Firefox lowers opacity by default, this ensures it shows */
+    color: #adb5bd; 
+    opacity: 1;     
 }
 
 .transition-all { transition: all 0.2s ease-in-out; }
 .transition-all:hover { opacity: 1 !important; color: #fff !important; transform: translateX(-2px); }
 
 .decrypt-me {
-    /* Prevents the gibberish from showing briefly */
     display: inline-block;
     min-width: 50px;
+}
+
+/* 8. Calendar Component */
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    background-color: rgba(255, 255, 255, 0.1); 
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.calendar-header {
+    background-color: #121212; 
+    color: #a0a0a0;
+    font-weight: bold;
+    padding: 12px 0;
+    text-align: center;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+}
+
+.calendar-day {
+    background-color: #2d2d2d; 
+    min-height: 110px;
+    padding: 10px;
+    transition: all 0.2s ease;
+    text-decoration: none !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: none;
+}
+
+.calendar-day:hover {
+    background-color: rgba(13, 202, 240, 0.05); 
+}
+
+.day-number {
+    font-weight: bold;
+    color: #ffffff;
+    margin-bottom: 8px;
+}
+
+.empty-day {
+    background-color: #1a1a1a; 
+    opacity: 0.4;
+}
+
+/* New Indicator Styling */
+.indicator-container {
+    display: flex;
+    width: 100%;
+    margin-top: 5px;
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.dot-start {
+    background-color: #0dcaf0; 
+    box-shadow: 0 0 5px rgba(13, 202, 240, 0.6);
+}
+
+.dot-due {
+    background-color: #ffc107; 
+    box-shadow: 0 0 5px rgba(255, 193, 7, 0.6);
+}
+
+.task-count-label {
+    font-size: 0.7rem;
+    line-height: 1.3;
+    text-align: center;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 576px) {
+    .calendar-day {
+        min-height: 70px;
+        padding: 5px;
+    }
+    
+    .calendar-header span.full-day { display: none; }
+    .calendar-header span.short-day { display: inline; }
+    
+    .task-count-label { 
+        font-size: 0.6rem; 
+        /* Optional: Hide the text on mobile if it gets too cramped */
+        /* display: none; */
+    } 
+    
+    .day-number {
+        font-size: 0.9rem;
+    }
+}
+
+@media (min-width: 577px) {
+    .calendar-header span.short-day { display: none; }
 }

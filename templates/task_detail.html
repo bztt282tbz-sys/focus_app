@@ -8,11 +8,17 @@
 
 <div class="centered-content py-0 mt-0">
     <div class="mx-auto w-100 mb-3 text-start" style="max-width: 600px;">
-        <a href="/dashboard" class="text-decoration-none text-muted d-inline-flex align-items-center small fw-medium transition-all" style="opacity: 0.8;">
+        <a href="{{ back_url }}" class="text-decoration-none text-muted d-inline-flex align-items-center small fw-medium transition-all" style="opacity: 0.8;">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-left me-1" viewBox="0 0 16 16">
-              <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
+                <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
             </svg>
-            Dashboard
+            {% if 'calendar' in back_url %}
+                Back to Calendar
+            {% elif 'search' in back_url %}
+                Back to Search
+            {% else %}
+                Back to Dashboard
+            {% endif %}
         </a>
     </div>
 
@@ -87,8 +93,8 @@
                                 class="form-control bg-dark text-white border-secondary text-center fs-4 fw-bold" 
                                 id="points-input" 
                                 name="points" 
-                                value="1" 
-                                min="1" 
+                                value="0" 
+                                min="0" 
                                 max="{{ remaining_points }}" 
                                 readonly>
                             <button class="btn btn-outline-info px-4" type="button" id="btn-plus">+</button>
@@ -134,6 +140,28 @@
                         <p class="text-muted small">No updates logged yet.</p>
                     {% endif %}
                 </div>
+            </div>
+            <hr class="border-secondary opacity-50 my-4">
+            <div class="d-flex justify-content-center gap-2 mt-2">
+                {% if task.is_hidden or task.date_deleted %}
+                    <form action="{{ url_for('unhide_task', task_id=task.id, back=back_url) }}" method="POST">
+                        <button type="submit" class="btn btn-outline-success btn-xs-custom">
+                            <i class="bi bi-eye small"></i> Unhide
+                        </button>
+                    </form>
+                {% else %}
+                    <form action="{{ url_for('hide_task', task_id=task.id, back=back_url) }}" method="POST">
+                        <button type="submit" class="btn btn-outline-secondary btn-xs-custom">
+                            <i class="bi bi-eye-slash small"></i> Hide
+                        </button>
+                    </form>
+                {% endif %}
+
+                <form id="delete-task-form" action="{{ url_for('delete_task', task_id=task.id, back=back_url) }}" method="POST">
+                    <button type="button" id="delete-btn-trigger" class="btn btn-outline-danger btn-xs-custom">
+                        <i class="bi bi-trash small"></i> Delete
+                    </button>
+                </form>
             </div>
         </div>
     </div>
