@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% block content %}
-
 <div class="container py-5">
     {# ... Header Section ... #}
     <div class="mx-auto mb-5" style="max-width: 800px;">
@@ -11,7 +10,12 @@
             <p class="text-muted mt-3 my-0">There are <span class="text-info">{{ tasks|length }}</span> available tasks.</p>
             <p class="text-muted my-0">You added <span class="text-info">{{ tasks|length + past_tasks|length }}</span> tasks in total!</p>
         </div>
-        <a href="{{ url_for('new_task') }}" class="btn btn-sm btn-outline-light px-3 mt-1">+ Add Task</a>
+        <div class="d-flex gap-2 mt-1">
+            <a href="{{ url_for('new_task') }}" class="btn btn-sm btn-outline-light px-3">+ Add Task</a>
+            <button id="reauth-btn" class="btn btn-sm btn-outline-warning px-3" style="display: none;" onclick="authenticateDevice()">
+                🔓 Unlock Data
+            </button>
+        </div>
     </div>
 
     {# Active Focus List #}
@@ -20,15 +24,14 @@
             {% for task in tasks %}
                 <div class="feature-item mb-4 position-relative">
                     <div class="d-flex justify-content-between align-items-start">
-                        <h5 class="text-white mb-1">
+                        <h5 class="text-white mb-0">
                             <a href="{{ url_for('view_task', task_id=task.id) }}" class="text-white text-decoration-none stretched-link">
                                 {# Wrap only the label in the decrypt class #}
                                 📝 <span class="decrypt-me is-decrypting">{{ task.label }}</span> 
                             </a>
                         </h5>
-                        <span class="fw-bold text-info small">{{ task.progress }}%</span>
+                        <span class="fw-bold text-muted h5 mb-0">{{ task.progress }}%</span>
                     </div>
-                    {% set complexity_labels = {1: 'Trivial', 2: 'Easy', 3: 'Moderate', 4: 'Hard', 5: 'Complex'} %}
                         <div class="d-flex justify-content-between align-items-center mt-3">
                             <p class="text-light small mb-0">
                                 {% if task.date_due %}
@@ -39,9 +42,14 @@
                                 <span class="ms-2">|</span>
                                 <span class="ms-2">{{ complexity_labels[task.complexity] }}</span>
                             </p>
-                            {# Slightly wider progress track for better visual balance #}
-                            <div class="progress" style="width: 120px; height: 4px; background-color: rgba(255,255,255,0.1);">
-                                <div class="progress-bar bg-info" role="progressbar" style="width: {{ task.progress }}%"></div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-0 flex-nowrap">
+                            <p class="text-light small mb-0 text-nowrap me-2">
+                                <span class="text-light">Importance: {{ importance_labels[task.importance] }}</span>
+                            </p>
+
+                            <div class="progress flex-grow-1" style="height: 4px; background-color: rgba(255,255,255,0.1); min-width: 50px;max-width: 50%;">
+                                <div class="progress-bar bg-info" role="progressbar" style="{{ 'width: ' ~ task.progress ~ '%' }}"></div>></div> 
                             </div>
                         </div>
                 </div>
@@ -64,17 +72,16 @@
             <div class="collapse" id="pastTasksCollapse">
                 <div class="text-start pt-3">
                     {% for task in past_tasks %}
-                        <div class="feature-item mb-4 position-relative  opacity-75 ">
+                <div class="feature-item mb-4 position-relative opacity-75">
                     <div class="d-flex justify-content-between align-items-start">
-                        <h5 class="text-white mb-1">
+                        <h5 class="text-white mb-0">
                             <a href="{{ url_for('view_task', task_id=task.id) }}" class="text-white text-decoration-none stretched-link">
                                 {# Wrap only the label in the decrypt class #}
-                                <span class="decrypt-me is-decrypting text-decoration-line-through">{{ task.label }}</span> 
+                                <span class="text-decoration-line-through">⌫ </span><span class="decrypt-me is-decrypting text-decoration-line-through">{{ task.label }}</span> 
                             </a>
                         </h5>
-                        <span class="fw-bold text-info small">{{ task.progress }}%</span>
+                        <span class="fw-bold text-muted h5 mb-0">{{ task.progress }}%</span>
                     </div>
-                    {% set complexity_labels = {1: 'Trivial', 2: 'Easy', 3: 'Moderate', 4: 'Hard', 5: 'Complex'} %}
                         <div class="d-flex justify-content-between align-items-center mt-3">
                             <p class="text-light small mb-0">
                                 {% if task.date_due %}
@@ -85,16 +92,125 @@
                                 <span class="ms-2">|</span>
                                 <span class="ms-2">{{ complexity_labels[task.complexity] }}</span>
                             </p>
-                            {# Slightly wider progress track for better visual balance #}
-                            <div class="progress" style="width: 120px; height: 4px; background-color: rgba(255,255,255,0.1);">
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-0 flex-nowrap">
+                            <p class="text-light small mb-0 text-nowrap me-2">
+                                <span class="text-light">Importance: {{ importance_labels[task.importance] }}</span>
+                            </p>
+
+                            <div class="progress flex-grow-1" style="height: 4px; background-color: rgba(255,255,255,0.1); min-width: 50px;max-width: 50%;">
                                 <div class="progress-bar bg-info" role="progressbar" style="width: {{ task.progress }}%"></div>
                             </div>
                         </div>
                 </div>
-                    {% endfor %}
+            {% endfor %}
                 </div>
             </div>
         </div>
     {% endif %}
 </div>
+<script nonce="{{ csp_nonce() }}">
+    (async function() {
+        const reauthBtn = document.getElementById('reauth-btn');
+        const e2eKey = sessionStorage.getItem("e2e_key");
+
+        if (!reauthBtn) return;
+
+        // --- Logic to show/hide based on key presence ---
+        if (!e2eKey) {
+            reauthBtn.style.display = 'inline-block';
+            console.log("Debug: E2E Key missing. Showing Unlock button.");
+        } else {
+            reauthBtn.style.display = 'none';
+            console.log("Debug: E2E Key present. Keeping Unlock button hidden.");
+            return; // Exit early if we don't need the listener
+        }
+
+        reauthBtn.addEventListener('click', async (e) => {
+            // ... the rest of your click listener code remains exactly the same ...
+            e.preventDefault();
+            console.log("Debug: Button clicked. Starting auth flow...");
+            
+            reauthBtn.disabled = true;
+            reauthBtn.innerText = "Checking Hardware...";
+
+            try {
+                // 1. Fetch options
+                const resp = await fetch('/generate-auth', { method: 'POST' });
+                if (!resp.ok) throw new Error("Server failed to generate auth options");
+                
+                const data = await resp.json();
+                console.log("Debug: Received options from server", data);
+
+                const options = JSON.parse(data.options);
+                
+                // 2. Decode Buffer fields
+                options.challenge = bufferDecode(options.challenge);
+                if(options.allowCredentials) {
+                    options.allowCredentials.forEach(c => c.id = bufferDecode(c.id));
+                }
+
+                // 3. PRF Setup
+                const firstCredId = data.options.allowCredentials?.[0]?.id;
+                const specificSalt = data.salts[firstCredId] || Object.values(data.salts)[0];
+                
+                if (specificSalt) {
+                    options.extensions = { prf: { eval: { first: bufferDecode(specificSalt) } } };
+                    console.log("Debug: PRF Extension attached.");
+                }
+
+                // 4. TRIGGER HARDWARE PROMPT
+                console.log("Debug: Calling navigator.credentials.get...");
+                const assertion = await navigator.credentials.get({ publicKey: options });
+                
+                if (!assertion) {
+                    throw new Error("No credential returned from browser.");
+                }
+                console.log("Debug: Hardware prompt successful.");
+
+                // 5. Handle PRF Result (The E2E Key)
+                const extensions = assertion.getClientExtensionResults();
+                if (extensions.prf?.results?.first) {
+                    const keyBytes = new Uint8Array(extensions.prf.results.first);
+                    const hexKey = Array.from(keyBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+                    sessionStorage.setItem("e2e_key", hexKey);
+                    console.log("Debug: E2E Key stored in sessionStorage.");
+                } else {
+                    console.warn("Debug: PRF results missing. Key not recovered.");
+                }
+
+                // 6. Verify with Server
+                reauthBtn.innerText = "Finalizing...";
+                const verifyResp = await fetch('/verify-auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: assertion.id,
+                        rawId: bufferEncode(assertion.rawId),
+                        type: assertion.type,
+                        response: {
+                            clientDataJSON: bufferEncode(assertion.response.clientDataJSON),
+                            authenticatorData: bufferEncode(assertion.response.authenticatorData),
+                            signature: bufferEncode(assertion.response.signature)
+                        }
+                    })
+                });
+
+                if (verifyResp.ok) {
+                    console.log("Debug: Success! Reloading...");
+                    window.location.reload(); 
+                } else {
+                    throw new Error("Server verification failed.");
+                }
+
+            } catch (err) {
+                console.error("Debug: AUTH ERROR ->", err);
+                reauthBtn.disabled = false;
+                reauthBtn.className = "btn btn-sm btn-danger px-3";
+                reauthBtn.innerText = "Auth Failed";
+                //alert("Auth Error: " + err.message);
+            }
+        });
+    })();
+</script>
 {% endblock %}

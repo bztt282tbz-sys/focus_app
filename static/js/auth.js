@@ -95,7 +95,7 @@ async function decryptPageContent() {
     if (!cryptoKey) {
         elements.forEach(el => {
             if (el.innerText.trim().length > 20) {
-                el.innerText = "🔒 Locked (Logout to refresh e2e key)";
+                el.innerText = "🔒 Locked";
             }
             el.classList.remove('is-decrypting');
         });
@@ -320,5 +320,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 setStatus("Decryption failed. Ensure the input is valid Base64.", true);
             }
         });
+    }
+
+    // 9. Check for missing E2E key to show Re-auth button
+    const e2eKey = sessionStorage.getItem("e2e_key");
+    const reauthBtn = document.getElementById('reauth-btn');
+
+    if (!e2eKey && reauthBtn) {
+        reauthBtn.style.display = 'inline-block';
     }
 });

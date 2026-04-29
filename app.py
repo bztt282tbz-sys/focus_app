@@ -327,7 +327,8 @@ def log_task_progress(task_id):
         new_entry = TaskProgressEntry(
             task_id=task.id, 
             points_completed=points, 
-            comment=comment
+            comment=comment,
+            date_logged=datetime.now(timezone.utc)
         )
         db.session.add(new_entry)
         db.session.commit()
@@ -357,8 +358,10 @@ def toggle_setting(setting_key):
     allowed_settings = [
         'registration_enabled', 
         'login_enabled', 
-        'api_enabled', 
-        'perma_delete_task_enabled'
+        'perma_delete_task_enabled',
+        'apple_calendar',
+        'start_date_inject_default',
+        'api_enabled'
     ]
     if setting_key not in allowed_settings:
         abort(400)
@@ -453,7 +456,8 @@ def view_task(task_id):
     return render_template('task_detail.html', 
                        task=task, 
                        back_url=back_url, # Pass the actual URL string
-                       remaining_points=remaining_points)
+                       remaining_points=remaining_points,
+                       get_setting=get_setting)
 
 
 @app.route('/tasks/new', methods=['GET', 'POST'])
@@ -491,25 +495,39 @@ def new_task():
         
         flash("Task created successfully!", "success")
         return redirect(url_for('dashboard'))
+    
+    today_str=datetime.now().strftime('%Y-%m-%d')
 
-    return render_template('new_task.html', title="New Task")
+    return render_template('new_task.html', title="New Task",today_date=today_str, get_setting=get_setting)
 
 @app.route('/login', methods=['GET'])
 @limiter.limit("5 per hour")
 def login():
     return render_template('login.html')
 
+from datetime import datetime, timezone, timedelta
+from sqlalchemy import func, or_, and_
+
 @app.route('/dashboard')
 @login_required
 @onboarding_required
 def dashboard():
-    # 1. Subquery to calculate current progress for all tasks
+    # 1. Configuration (Future User Settings)
+    lookback_days = 2
+    now_utc = datetime.now(timezone.utc)
+    threshold_date = now_utc - timedelta(days=lookback_days)
+    
+    # We strip time for the "today" comparison to catch everything due on the current calendar day
+    today_dt = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    # 2. Subquery for progress and the MOST RECENT log date
     progress_subquery = db.session.query(
         TaskProgressEntry.task_id,
-        func.sum(TaskProgressEntry.points_completed).label('total_done')
+        func.sum(TaskProgressEntry.points_completed).label('total_done'),
+        func.max(TaskProgressEntry.date_logged).label('last_progress_at') # Latest entry
     ).group_by(TaskProgressEntry.task_id).subquery()
 
-    # 2. Base query for this user's tasks
+    # 3. Base query
     base_query = UsersTask.query.outerjoin(
         progress_subquery, UsersTask.id == progress_subquery.c.task_id
     ).filter(
@@ -518,21 +536,26 @@ def dashboard():
         UsersTask.date_deleted == None
     )
 
-    # FIX: Get current UTC time and strip the time components for a "today" comparison
-    # Use datetime.now(timezone.utc) instead of datetime.utcnow()
-    now_utc = datetime.now(timezone.utc)
-    today_dt = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
-    
-    # 3. Filter for Focus List
+    # 4. Focus List: Incomplete and not overdue
     focus_tasks = base_query.filter(
         func.coalesce(progress_subquery.c.total_done, 0) < UsersTask.complexity,
         (UsersTask.date_due == None) | (UsersTask.date_due >= today_dt)
     ).order_by(UsersTask.importance.desc()).all()
 
-    # 4. Filter for Past/Completed List
+    # 5. Past Tasks: Recent successes or recent misses
     past_tasks = base_query.filter(
-        (func.coalesce(progress_subquery.c.total_done, 0) >= UsersTask.complexity) |
-        (UsersTask.date_due < today_dt)
+        or_(
+            # Task is completed AND the last log was within the last 2 days
+            and_(
+                func.coalesce(progress_subquery.c.total_done, 0) >= UsersTask.complexity,
+                progress_subquery.c.last_progress_at >= threshold_date
+            ),
+            # Task is overdue AND the due date was within the last 2 days
+            and_(
+                UsersTask.date_due < today_dt,
+                UsersTask.date_due >= threshold_date
+            )
+        )
     ).all()
 
     return render_template(

@@ -1,11 +1,5 @@
 {% extends "base.html" %}
 {% block content %}
-<style>
-    /* Smoothly reveal text after decryption */
-    .decrypt-me.is-decrypting { opacity: 0; }
-    .decrypt-me { transition: opacity 0.3s ease-in; }
-</style>
-
 <div class="centered-content py-0 mt-0">
     <div class="mx-auto w-100 mb-3 text-start" style="max-width: 600px;">
         <a href="{{ back_url }}" class="text-decoration-none text-muted d-inline-flex align-items-center small fw-medium transition-all" style="opacity: 0.8;">
@@ -24,19 +18,12 @@
 
     <div class="card bg-dark text-white border-secondary mx-auto w-100 mb-5" style="max-width: 600px;">
         <div class="card-body p-4">
-            
             <div class="d-flex justify-content-between align-items-start mb-4">
                 {# Fixed missing quote in class attribute below #}
-                <h2 class="card-title mb-0 decrypt-me is-decrypting">{{ task.label }}</h2>
+                <h2 class="card-title mb-0 decrypt-me is-decrypting" id="task-name-{{ task.id }}">{{ task.label }}</h2>
                 <div class="d-flex gap-1">
-                    {# Fixed the unclosed if/elif logic here #}
-                    {% if task.importance >= 4 %}
-                        <span class="badge rounded-pill bg-danger">Critical</span>
-                    {% elif task.importance == 3 %}
-                        <span class="badge rounded-pill bg-warning text-dark">Important</span>
-                    {% else %}
-                        <span class="badge rounded-pill bg-secondary">Routine</span>
-                    {% endif %}
+                    
+                    <span class="badge rounded-pill {{ importance_badge[task.importance] }}">{{ importance_labels[task.importance] }}</span>
                 </div>
             </div>
 
@@ -44,14 +31,13 @@
             <div class="mb-4 text-start">
                 <label class="text-muted small text-uppercase fw-bold d-block mb-1">Details</label>
                 {% if task.comment and task.comment.strip() %}
-                    <p class="text-light fs-5 decrypt-me is-decrypting">{{ task.comment }}</p>
+                    <p class="text-light fs-5 decrypt-me is-decrypting" id="task-comment-{{ task.id }}">{{ task.comment }}</p>
                 {% else %}
                     <p class="text-muted italic">No description provided.</p>
                 {% endif %}
             </div>
 
             <div class="row g-3 mb-4 text-start">
-                {% set complexity_labels = {1: 'Trivial', 2: 'Easy', 3: 'Moderate', 4: 'Hard', 5: 'Complex'} %}
                 <div class="col-6">
                     <div class="p-3 border border-secondary rounded bg-dark">
                         <label class="text-muted small text-uppercase d-block mb-1">Complexity</label>
@@ -143,6 +129,17 @@
             </div>
             <hr class="border-secondary opacity-50 my-4">
             <div class="d-flex justify-content-center gap-2 mt-2">
+                <form id="delete-task-form" action="{{ url_for('delete_task', task_id=task.id, back=back_url) }}" method="POST">
+                    <button type="button" id="delete-btn-trigger" class="btn btn-outline-danger btn-xs-custom">
+                        <i class="bi bi-trash small"></i> 
+                        {# Logic for Dynamic Delete Text #}
+                        {% if get_setting('perma_delete_task_enabled') %}
+                            Delete Permanently
+                        {% else %}
+                            Soft Delete
+                        {% endif %}
+                    </button>
+                </form>
                 {% if task.is_hidden or task.date_deleted %}
                     <form action="{{ url_for('unhide_task', task_id=task.id, back=back_url) }}" method="POST">
                         <button type="submit" class="btn btn-outline-success btn-xs-custom">
@@ -152,44 +149,87 @@
                 {% else %}
                     <form action="{{ url_for('hide_task', task_id=task.id, back=back_url) }}" method="POST">
                         <button type="submit" class="btn btn-outline-secondary btn-xs-custom">
-                            <i class="bi bi-eye-slash small"></i> Hide
+                            <i class="bi bi-eye-slash small"></i> Hide Task
                         </button>
                     </form>
                 {% endif %}
-
-                <form id="delete-task-form" action="{{ url_for('delete_task', task_id=task.id, back=back_url) }}" method="POST">
-                    <button type="button" id="delete-btn-trigger" class="btn btn-outline-danger btn-xs-custom">
-                        <i class="bi bi-trash small"></i> Delete
+                {% if get_setting('apple_calendar') %}
+                    <button type="button" 
+                            id="add-to-calendar-btn"
+                            class="btn btn-outline-info btn-xs-custom">
+                        <i class="bi bi-calendar-plus small"></i> Add to Calendar
                     </button>
-                </form>
+                {% endif %}
             </div>
         </div>
     </div>
+    {# Hide iOS endorsement text based on setting #}
+    {% if get_setting('apple_calendar') %}
+    <p class="text-muted small mt-2 opacity-75">
+        <i class="bi bi-info-circle me-1"></i> Optimized for iOS Calendar
+    </p>
+    {% endif %}
 </div>
 
 <script nonce="{{ csp_nonce() }}">
 document.addEventListener("DOMContentLoaded", () => {
+    const taskId = "{{ task.id }}";
+
     // 1. Decrypt content
     if (typeof decryptPageContent === 'function') {
         decryptPageContent();
     }
 
-    // 2. Points Counter Logic
-    const pointsInput = document.getElementById('points-input');
-    const btnMinus = document.getElementById('btn-minus');
-    const btnPlus = document.getElementById('btn-plus');
-    
-    if (pointsInput) {
-        const maxPoints = parseInt(pointsInput.getAttribute('max'));
-        btnMinus.addEventListener('click', () => {
-            let val = parseInt(pointsInput.value);
-            if (val > 1) pointsInput.value = val - 1;
-        });
-        btnPlus.addEventListener('click', () => {
-            let val = parseInt(pointsInput.value);
-            if (val < maxPoints) pointsInput.value = val + 1;
-        });
-    }
+// 2. Points Counter Logic - With Dynamic Styling for Both Buttons
+const pointsInput = document.getElementById('points-input');
+const btnMinus = document.getElementById('btn-minus');
+const btnPlus = document.getElementById('btn-plus');
+
+if (pointsInput && !pointsInput.dataset.initialized) {
+    const maxPoints = parseInt(pointsInput.getAttribute('max')) || 0;
+
+    const updateButtonStates = (val) => {
+        // Handle Minus Button (Red if > 0)
+        if (val > 0) {
+            btnMinus.classList.replace('btn-outline-secondary', 'btn-outline-danger');
+        } else {
+            btnMinus.classList.replace('btn-outline-danger', 'btn-outline-secondary');
+        }
+
+        // Handle Plus Button (Secondary if max reached)
+        if (val >= maxPoints) {
+            btnPlus.classList.replace('btn-outline-info', 'btn-outline-secondary');
+        } else {
+            btnPlus.classList.replace('btn-outline-secondary', 'btn-outline-info');
+        }
+    };
+
+    btnMinus.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        let currentVal = parseInt(pointsInput.value) || 0;
+        if (currentVal > 0) {
+            currentVal -= 1;
+            pointsInput.value = currentVal;
+        }
+        updateButtonStates(currentVal);
+    });
+
+    btnPlus.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        let currentVal = parseInt(pointsInput.value) || 0;
+        if (currentVal < maxPoints) {
+            currentVal += 1;
+            pointsInput.value = currentVal;
+        }
+        updateButtonStates(currentVal);
+    });
+
+    // Initialize states on load
+    updateButtonStates(parseInt(pointsInput.value) || 0);
+    pointsInput.dataset.initialized = "true";
+}
 
     // 3. Form Interceptor
     const progressForm = document.getElementById('progress-form');
@@ -208,6 +248,63 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
             progressForm.submit();
+        });
+    }
+
+    // 4. Calendar Logic & Listener
+    const calendarBtn = document.getElementById('add-to-calendar-btn');
+    if (calendarBtn) {
+        calendarBtn.addEventListener('click', () => {
+            const taskElement = document.querySelector(`#task-name-${taskId}`);
+            const taskCommentElement = document.querySelector(`#task-comment-${taskId}`);
+
+            const taskName = taskElement ? taskElement.innerText.trim() : "New Task";
+            
+            const rawComment = taskCommentElement ? taskCommentElement.innerText.trim() : "No description";
+            const cleanComment = rawComment
+                .replace(/\r?\n/g, "\\n") 
+                .replace(/[,;]/g, "\\$&");
+
+            const now = new Date();
+            const format = (d) => d.toISOString().replace(/-|:|\.\d+/g, "");
+            const dateStamp = format(now);
+
+            const icsContent = [
+                "BEGIN:VCALENDAR",
+                "VERSION:2.0",
+                "PRODID:-//FocusApp//NONSGML Event//EN",
+                "BEGIN:VEVENT",
+                `UID:${taskId}@tracker.meide-server.space`,
+                `DTSTAMP:${dateStamp}`,
+                `DTSTART:${dateStamp}`,
+                `DURATION:PT1H`,
+                `SUMMARY:${taskName}`,
+                `DESCRIPTION:${cleanComment} | Added by Focus App`, // FIXED: used cleanComment here
+                "END:VEVENT",
+                "END:VCALENDAR"
+            ].join("\r\n");
+
+            const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+            const calendarUrl = window.URL.createObjectURL(blob);
+            
+            const link = document.createElement("a");
+            link.href = calendarUrl;
+            link.setAttribute("download", "task-event.ics");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            setTimeout(() => window.URL.revokeObjectURL(calendarUrl), 100);
+        });
+    }
+
+    // 5. Delete Confirm
+    const deleteBtn = document.getElementById('delete-btn-trigger');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', () => {
+            if (confirm('Are you sure you want to delete this task?')) {
+                document.getElementById('delete-task-form').submit();
+            }
         });
     }
 });

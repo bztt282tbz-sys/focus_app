@@ -9,7 +9,6 @@
                 <div class="mb-3 text-start">
                     <label for="label" class="form-label text-light">Task Name</label>
                     <input type="text" id="label" name="label" class="form-control bg-dark text-white border-secondary" placeholder="What needs to be done?" required>
-                    <div id="encryption-status" class="form-text text-muted">Data is encrypted locally before upload.</div>
                 </div>
 
                 <div class="mb-3 text-start">
@@ -21,21 +20,21 @@
                     <div class="col-md-6 mb-3 mb-md-0">
                         <label for="importance" class="form-label text-light">Importance (1-5)</label>
                         <select id="importance" name="importance" class="form-select bg-dark text-white border-secondary">
-                            <option value="1">1 - Low</option>
-                            <option value="2">2 - Normal</option>
-                            <option value="3" selected>3 - Medium</option>
-                            <option value="4">4 - High</option>
-                            <option value="5">5 - Critical</option>
+                            <option value="1">1 - {{ importance_labels[1] }}</option>
+                            <option value="2">2 - {{ importance_labels[2] }}</option>
+                            <option value="3" selected>3 - {{ importance_labels[3] }}</option>
+                            <option value="4">4 - {{ importance_labels[4] }}</option>
+                            <option value="5">5 - {{ importance_labels[5] }}</option>
                         </select>
                     </div>
                     <div class="col-md-6">
                         <label for="complexity" class="form-label text-light">Complexity (1-5)</label>
                         <select id="complexity" name="complexity" class="form-select bg-dark text-white border-secondary">
-                            <option value="1">1 - Trivial</option>
-                            <option value="2" selected>2 - Easy</option>
-                            <option value="3">3 - Moderate</option>
-                            <option value="4">4 - Hard</option>
-                            <option value="5">5 - Complex</option>
+                            <option value="1">1 - {{ complexity_labels[1] }}</option>
+                            <option value="2">2 - {{ complexity_labels[2] }}</option>
+                            <option value="3" selected>3 - {{ complexity_labels[3] }}</option>
+                            <option value="4">4 - {{ complexity_labels[4] }}</option>
+                            <option value="5">5 - {{ complexity_labels[5] }}</option>
                         </select>
                     </div>
                 </div>
@@ -43,7 +42,7 @@
                 <div class="row mb-4 text-start">
                     <div class="col-md-6 mb-3">
                         <label for="date_start" class="form-label text-light">Start Date</label>
-                        <input type="date" id="date_start" name="date_start" class="form-control bg-dark text-white border-secondary" required>
+                        <input type="date" id="date_start" name="date_start" class="form-control bg-dark text-white border-secondary" {% if get_setting('start_date_inject_default') %} value="{{ today_date }}" {% endif %} required>
                     </div>
                     <div class="col-md-6">
                         <label for="date_due" class="form-label text-light">Due Date</label>

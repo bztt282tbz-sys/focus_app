@@ -8,11 +8,19 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+    <style>
+    /* Smoothly reveal text after decryption */
+        .decrypt-me.is-decrypting { opacity: 0; }
+        .decrypt-me { transition: opacity 0.3s ease-in; }
+    </style>
     <script nonce="{{ csp_nonce() }}">document.addEventListener("DOMContentLoaded", () => {
     decryptPageContent();
 });</script>
+    {% set complexity_labels = {1: 'Trivial', 2: 'Easy', 3: 'Moderate', 4: 'Hard', 5: 'Complex'} %}
+    {% set importance_labels = {1: 'Optional', 2: 'Low', 3: 'Normal', 4: 'Medium', 5: 'High'} %}
+    {% set importance_badge = {1: 'bg-secondary', 2: 'bg-secondary', 3: 'bg-success', 4: 'bg-warning', 5: 'bg-danger'} %}
     {% block header %}
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-3 fixed-top">
     <div class="container">
         <a class="navbar-brand" href="{{ url_for('index') }}">Focus App</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -27,11 +35,6 @@
                     <li class="nav-item">
                         <a class="nav-link {{ 'active' if request.endpoint == 'new_task' }}" href="{{ url_for('new_task') }}">+ New Task</a>
                     </li>
-                    {% endif %}
-                        <li class="nav-item">
-                            <a class="nav-link {{ 'active' if request.endpoint == 'index' }}" href="{{ url_for('index') }}">Home</a>
-                        </li>
-                    {% if current_user.is_authenticated %}
                     <li class="nav-item">
                         <a class="nav-link {{ 'active' if request.endpoint == 'calendar_view' }}" href="{{ url_for('calendar_view') }}">Calendar</a>
                     </li>
@@ -40,6 +43,10 @@
                             <a style="border: 1px; border-color: aqua;" class="nav-link {{ 'active' if request.endpoint == 'admin_dashboard' }}" href="{{ url_for('admin_dashboard') }}">Admin</a>
                         </li>
                     {% endif %}
+                {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if request.endpoint == 'index' }}" href="{{ url_for('index') }}">Home</a>
+                    </li>
                 {% endif %}
                         <li class="nav-item">
                             <a class="nav-link {{ 'active' if request.endpoint == 'about' }}" href="{{ url_for('about') }}">About</a>

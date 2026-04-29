@@ -16,14 +16,14 @@
         
         {% set complexity_labels = {1: 'Trivial', 2: 'Easy', 3: 'Moderate', 4: 'Hard', 5: 'Complex'} %}
         <div class="d-flex justify-content-between align-items-center mt-3">
-            <p class="text-light small mb-0">
+            <p class="text-light small mb-0 text-nowrap">
                 <span class="text-muted">Ends: 
                     {{ task.date_due.strftime('%b %d') if task.date_due else 'No Deadline' }}
                 </span>
                 <span class="ms-2">|</span>
                 <span class="ms-2">{{ complexity_labels.get(task.complexity, 'Standard') }}</span>
             </p>
-            <div class="progress" style="width: 120px; height: 4px; background-color: rgba(255,255,255,0.1);">
+            <div class="progress flex-grow-1" style="height: 4px; background-color: rgba(255,255,255,0.1); min-width: 50px;max-width: 50%;">
                 <div class="progress-bar bg-info" role="progressbar" style="width: {{ task.progress }}%"></div>
             </div>
         </div>

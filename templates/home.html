@@ -3,36 +3,63 @@
 
 <div class="centered-content">
     <h2 class="cover-heading mb-5">Privacy & Security</h2>
-    
-    <div class="content-body text-start">
-        <div class="feature-item mb-4">
-            <h5 class="text-white mb-1">🔒 Passwordless Security</h5>
-            <p class="text-light">Experience seamless login with <a href="https://support.apple.com/de-de/guide/iphone/iphf538ea8d0/ios" class="link-info text-decoration-underline" >Passkeys</a>.</p>
-        </div>
+        <div class="content-body text-start">
+            <div class="feature-item mb-4">
+                <h5 class="text-white mb-1">🔍 How do I know I can trust you?</h5>
+                <p class="text-light">
+                    Short answer: 
+                        <strong>
+                            You cannot.
+                        </strong><br>
+                    Transparency is key: this project is experimental. While functional, much of the logic was synthesized by LLMs. I encourage you to audit the source code thoroughly before deployment to ensure it meets your personal security standards.
+                </p>
+            </div>
 
-        <div class="feature-item mb-4">
-            <h5 class="text-white mb-1">🧘‍♂️ Purpose-Built Focus</h5>
-            <p class="text-light">A minimalist task tracker built for deep work. Features a clean API for external graphical displays.</p>
-        </div>
+            <div class="feature-item mb-4">
+                <h5 class="text-white mb-1">🔑 Passwordless Security</h5>
+                <p class="text-light">
+                    Experience seamless login with 
+                    <a href="https://support.apple.com/de-de/guide/iphone/iphf538ea8d0/ios" class="link-info text-decoration-underline">Passkeys</a>.
+                </p>
+            </div>
 
-        <div class="feature-item mb-4">
-            <h5 class="text-white mb-1">🚀 WebAuthn PRF</h5>
-            <p class="text-light">Implementation complete. <a href="https://bitwarden.com/de-de/blog/prf-webauthn-and-its-role-in-passkeys/" class="link-info text-decoration-underline" >WebAuthn PRF</a> enables symetric key generation using Authenticators/Passkeys.</p>
-        </div>
+            <div class="feature-item mb-4">
+                <h5 class="text-white mb-1">🎯 Purpose-Built Focus</h5>
+                <p class="text-light">
+                    A minimalist task tracker built for deep work.
+                </p>
+            </div>
 
-        <div class="feature-item mb-4">
-            <h5 class="text-white mb-1">🛡️ Privacy by Design</h5>
-            <p class="text-light">Your data is protected by hardened security headers and modern session encryption.</p>
-        </div>
+            <div class="feature-item mb-4">
+                <h5 class="text-white mb-1">🧬 WebAuthn PRF</h5>
+                <p class="text-light">
+                    Implementation complete. 
+                    <a href="https://bitwarden.com/de-de/blog/prf-webauthn-and-its-role-in-passkeys/" class="link-info text-decoration-underline">WebAuthn PRF</a> 
+                    enables symmetric key generation using Authenticators/Passkeys.
+                </p>
+            </div>
 
-        <div class="feature-item mb-4">
-            <h5 class="text-white mb-1">⚡ End-to-End Encryption</h5>
-            <p class="text-light">I was able to implement E2EE. For a shopping list? Absolutely! Key is stored in session storage, which is a potential weak point. Still, i can't think of a better solution. XSS Protection has to be improved. </p>
-        </div>
-        <div class="feature-item mb-4">
-            <h5 class="text-white mb-1">🐞 Bug</h5>
-            <p class="text-light">Currently the first created account is brocken and does not have to login. Might happen on other instances as well. Might not be a huge issue, but it's kinda odd.</p>
-        </div>
+            <div class="feature-item mb-4">
+                <h5 class="text-white mb-1">🛡️ Privacy by Design</h5>
+                <p class="text-light">
+                    Your data is protected by hardened security headers and modern session encryption protocols.
+                </p>
+            </div>
+
+            <div class="feature-item mb-4">
+                <h5 class="text-white mb-1">⚡ End-to-End Encryption</h5>
+                <p class="text-light">
+                    Full E2EE for your data. Keys are currently managed via session storage; therefore, defense relies heavily on strict XSS prevention. 
+                    <br><small class="text-warning">Note: Only task labels and comments are encrypted.</small>
+                </p>
+            </div>
+
+            <div class="feature-item mb-4">
+                <h5 class="text-white mb-1">🧪 Known Anomalies</h5>
+                <p class="text-light">
+                    In some environments, the primary administrative account may experience persistence issues during the initial session. I am investigating the root cause of this authentication edge case to ensure total stability across all instances.
+                </p>
+            </div>
     </div>
 
     <div class="actions mt-4">
