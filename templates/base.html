@@ -20,9 +20,6 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto">
-                <li class="nav-item">
-                    <a class="nav-link {{ 'active' if request.endpoint == 'index' }}" href="{{ url_for('index') }}">Home</a>
-                </li>
                 {% if current_user.is_authenticated %}
                     <li class="nav-item">
                         <a class="nav-link {{ 'active' if request.endpoint == 'dashboard' }}" href="{{ url_for('dashboard') }}">Dashboard</a>
@@ -30,6 +27,11 @@
                     <li class="nav-item">
                         <a class="nav-link {{ 'active' if request.endpoint == 'new_task' }}" href="{{ url_for('new_task') }}">+ New Task</a>
                     </li>
+                    {% endif %}
+                        <li class="nav-item">
+                            <a class="nav-link {{ 'active' if request.endpoint == 'index' }}" href="{{ url_for('index') }}">Home</a>
+                        </li>
+                    {% if current_user.is_authenticated %}
                     <li class="nav-item">
                         <a class="nav-link {{ 'active' if request.endpoint == 'calendar_view' }}" href="{{ url_for('calendar_view') }}">Calendar</a>
                     </li>

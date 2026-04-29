@@ -95,7 +95,7 @@ async function decryptPageContent() {
     if (!cryptoKey) {
         elements.forEach(el => {
             if (el.innerText.trim().length > 20) {
-                el.innerText = "🔒 Locked";
+                el.innerText = "🔒 Locked (Logout to refresh e2e key)";
             }
             el.classList.remove('is-decrypting');
         });
