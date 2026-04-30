@@ -1,7 +1,7 @@
 import os
 import json
 import base64
-from flask import Flask, render_template, redirect, url_for, flash, request, jsonify, session, abort
+from flask import Flask, render_template, redirect, url_for, flash, request, jsonify, session, abort, send_from_directory
 from datetime import datetime, timezone, timedelta
 import calendar
 from flask_limiter import Limiter
@@ -96,6 +96,8 @@ class User(db.Model, UserMixin):
     is_admin = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
     prf_salt = db.Column(db.LargeBinary, nullable=True)
+    has_api_permission = db.Column(db.Boolean, default=False)
+    api_enabled = db.Column(db.Boolean, default=False)
 
 class SystemSettingBool(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -141,7 +143,7 @@ class TaskProgressEntry(db.Model):
 
 def get_setting(key):
     setting = SystemSettingBool.query.filter_by(key=key).first()
-    return setting.value if setting else True
+    return setting.value if setting else False
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -162,6 +164,10 @@ def onboarding_required(f):
             return redirect(url_for('onboarding'))
         return f(*args, **kwargs)
     return decorated_function
+
+@app.context_processor
+def inject_settings():
+    return dict(get_setting=get_setting)
 
 # --- ROUTES ---
 @app.route('/')
@@ -343,37 +349,50 @@ def log_task_progress(task_id):
 @admin_required
 def view_user_detail(user_id):
     user = User.query.get_or_404(user_id)
-    # We can also fetch their task count or last activity here
+    # Refresh to ensure we see the latest has_api_permission status
+    db.session.refresh(user)
+    
     task_stats = {
         "total": UsersTask.query.filter_by(user_id=user.id).count(),
         "active": UsersTask.query.filter_by(user_id=user.id, is_hidden=False).count()
     }
     return render_template('user_detail.html', user=user, stats=task_stats, title=f"Manage {user.username}")
 
+@app.route('/admin/toggle_api_permission/<int:user_id>', methods=['POST'])
+@login_required
+@admin_required
+def toggle_api_permission(user_id):
+    user = User.query.get_or_404(user_id)
+    
+    # Toggle the permission
+    user.has_api_permission = not user.has_api_permission
+    
+    # If we revoke permission, we should probably disable their API access too
+    if not user.has_api_permission:
+        user.api_enabled = False
+        
+    db.session.commit()
+    
+    status = "granted" if user.has_api_permission else "revoked"
+    flash(f"API access for {user.username} has been {status}.", "success")
+    return redirect(url_for('view_user_detail', user_id=user.id))
+
 @app.route('/admin/toggle_setting/<string:setting_key>', methods=['POST'])
 @login_required
 @onboarding_required
 @admin_required
 def toggle_setting(setting_key):
-    allowed_settings = [
-        'registration_enabled', 
-        'login_enabled', 
-        'perma_delete_task_enabled',
-        'apple_calendar',
-        'start_date_inject_default',
-        'api_enabled'
-    ]
-    if setting_key not in allowed_settings:
-        abort(400)
-    setting = SystemSettingBool.query.filter_by(key=setting_key).first()
-    if not setting:
-        setting = SystemSettingBool(key=setting_key, value=False)
-        db.session.add(setting)
-    else:
-        setting.value = not setting.value
+    # 1. Directly query the DB. If the key isn't in the table, stop here.
+    setting = SystemSettingBool.query.filter_by(key=setting_key).first_or_404()
+    
+    # 2. Simply flip the value
+    setting.value = not setting.value
     db.session.commit()
+    
+    # 3. Use the human-readable label for the flash message
     status = "enabled" if setting.value else "disabled"
-    flash(f"System setting '{setting_key}' has been {status}.", "success")
+    flash(f"System setting '{setting.label}' has been {status}.", "success")
+    
     return redirect(url_for('admin_dashboard'))
 
 @app.route('/tasks/<int:task_id>/delete', methods=['POST'])
@@ -678,3 +697,46 @@ def logout():
     logout_user()
     flash("Logged out successfully.", "info")
     return redirect(url_for('login'))
+
+@app.route('/animation.pix')
+def download_pixels():
+    # os.getcwd() gets the current folder where your app is running
+    return send_from_directory(
+        directory=os.getcwd(), 
+        path='animations/transitions.pix', 
+        as_attachment=True
+    )
+
+@app.route('/settings', methods=['GET', 'POST'])
+@login_required
+@onboarding_required
+def user_settings():
+    # Force the current_user to pull the latest columns from the DB
+    db.session.add(current_user)
+    db.session.refresh(current_user)
+
+    if not (get_setting('user_setting_access') or current_user.is_admin):
+        flash("Settings access is currently restricted.", "warning")
+        return redirect(url_for('dashboard'))
+        
+    if request.method == 'POST':
+        # Update Username
+        new_username = request.form.get('username')
+        if new_username and new_username != current_user.username:
+            existing_user = User.query.filter_by(username=new_username).first()
+            if existing_user:
+                flash("Username already taken.", "danger")
+            else:
+                current_user.username = new_username
+                flash("Username updated!", "success")
+
+        # Update API Toggle logic using getattr as a safety net
+        if getattr(current_user, 'has_api_permission', False):
+            api_toggle = request.form.get('api_enabled') == 'on'
+            current_user.api_enabled = api_toggle
+            flash("API settings updated.", "success")
+
+        db.session.commit()
+        return redirect(url_for('user_settings'))
+
+    return render_template('user_settings.html', title="Settings")

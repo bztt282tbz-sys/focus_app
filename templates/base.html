@@ -38,6 +38,11 @@
                     <li class="nav-item">
                         <a class="nav-link {{ 'active' if request.endpoint == 'calendar_view' }}" href="{{ url_for('calendar_view') }}">Calendar</a>
                     </li>
+                    {% if current_user.is_onboarded and (get_setting('user_settings_access') or current_user.is_admin) %}
+                        <li class="nav-item">
+                            <a class="nav-link {{ 'active' if request.endpoint == 'user_settings' }}" href="{{ url_for('user_settings') }}">Settings</a>
+                        </li>
+                    {% endif %}
                     {% if current_user.is_admin %}
                         <li class="nav-item">
                             <a style="border: 1px; border-color: aqua;" class="nav-link {{ 'active' if request.endpoint == 'admin_dashboard' }}" href="{{ url_for('admin_dashboard') }}">Admin</a>

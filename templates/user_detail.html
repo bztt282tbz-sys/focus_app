@@ -9,6 +9,7 @@
     </div>
 
     <div class="row">
+        <!-- User Information Column -->
         <div class="col-md-6 mb-4">
             <div class="feature-item h-100">
                 <h5 class="text-white border-bottom pb-2 mb-3">Profile Data</h5>
@@ -16,14 +17,22 @@
                 <p class="mb-1 text-secondary">Security Preference: <span class="text-white">{{ user.security_preference }}</span></p>
                 <p class="mb-1 text-secondary">Onboarded: <span class="text-white">{{ 'Yes' if user.is_onboarded else 'No' }}</span></p>
                 <p class="mb-1 text-secondary">Total Tasks: <span class="text-white">{{ stats.total }}</span></p>
+                <p class="mb-1 text-secondary">API Status: 
+                    <span class="badge {{ 'bg-success' if user.has_api_permission else 'bg-secondary' }}">
+                        {{ 'Authorized' if user.has_api_permission else 'Unauthorized' }}
+                    </span>
+                </p>
             </div>
         </div>
 
+        <!-- Admin Actions Column -->
         <div class="col-md-6 mb-4">
             <div class="feature-item h-100">
                 <h5 class="text-white border-bottom pb-2 mb-3">Administrative Actions</h5>
                 
-                <form action="{{ url_for('toggle_user', user_id=user.id) }}" method="POST">
+                <!-- Account Lock Toggle -->
+                <form action="{{ url_for('toggle_user', user_id=user.id) }}" method="POST" class="mb-4">
+                    <label class="text-secondary small d-block mb-2">Login Access</label>
                     {% if user.is_active %}
                         <p class="small text-warning">Locking this user will prevent them from logging in immediately.</p>
                         <button type="submit" class="btn btn-danger w-100" 
@@ -31,16 +40,30 @@
                             Lock Account
                         </button>
                     {% else %}
-                        <p class="small text-success">This account is currently restricted. Activating it will restore access.</p>
+                        <p class="small text-success">This account is restricted. Activating restores access.</p>
                         <button type="submit" class="btn btn-success w-100">Activate Account</button>
+                    {% endif %}
+                </form>
+
+                <hr class="border-secondary">
+
+                <!-- API Permission Toggle -->
+                <form action="{{ url_for('toggle_api_permission', user_id=user.id) }}" method="POST">
+                    <label class="text-secondary small d-block mb-2">Developer Permissions</label>
+                    {% if user.has_api_permission %}
+                        <p class="small text-secondary">User can currently enable/disable API keys in their settings.</p>
+                        <button type="submit" class="btn btn-outline-warning w-100">Revoke API Access</button>
+                    {% else %}
+                        <p class="small text-secondary">Granting permission allows the user to see API settings.</p>
+                        <button type="submit" class="btn btn-outline-info w-100">Grant API Access</button>
                     {% endif %}
                 </form>
             </div>
         </div>
     </div>
 
-    <div>
-        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-light">Back to Admin Panel</a>
+    <div class="mt-3">
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-light btn-sm">Back to Admin Panel</a>
     </div>
 </div>
 {% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="content-body text-start" style="width: 40rem; max-width: 95%;">
+    <h2 class="text-white mb-4">Account Settings</h2>
+
+    <form method="POST" action="{{ url_for('user_settings') }}">
+        
+        <div class="feature-item mb-4">
+            <label class="h5 text-white mb-2">Display Name</label>
+            <div class="input-group">
+                <input type="text" name="username" class="form-control bg-dark text-white border-secondary" 
+                       value="{{ current_user.username }}" placeholder="Enter username">
+                <button class="btn btn-outline-primary" type="submit">Save Name</button>
+            </div>
+            <p class="small text-secondary mt-1">This is how you appear in the system.</p>
+        </div>
+
+        <div class="feature-item mb-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="text-white mb-0">API Connection</h5>
+                    {% if current_user.has_api_permission %}
+                        <p class="small text-success fw-bold mb-0">Access Granted</p>
+                    {% else %}
+                        <p class="small text-warning fw-bold mb-0">Access Restricted</p>
+                    {% endif %}
+                </div>
+                
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="api_enabled" id="apiSwitch"
+                           {{ 'checked' if current_user.api_enabled else '' }}
+                           {{ 'disabled' if not current_user.has_api_permission }}>
+                </div>
+            </div>
+            <p class="small text-secondary mt-2">
+                Enable this to allow third-party integrations to fetch your tasks. 
+                {% if not current_user.has_api_permission %}
+                <br><span class="text-info">Contact an admin to request API list access.</span>
+                {% endif %}
+            </p>
+        </div>
+
+        <hr class="border-secondary my-4">
+
+        <div class="d-flex justify-content-between">
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-light">Back to Dashboard</a>
+            <button type="submit" class="btn btn-primary">Save All Changes</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
